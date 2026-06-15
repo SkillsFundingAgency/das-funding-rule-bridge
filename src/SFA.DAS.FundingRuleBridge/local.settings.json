@@ -1,0 +1,19 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+        "AzureFunctionsJobHost:Logging:LogLevel:Host": "Information",
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "ConfigurationStorageConnectionString": "UseDevelopmentStorage=true;",
+        "ConfigNames": "SFA.DAS.FundingRuleBridge.Jobs",
+        "EnvironmentName": "LOCAL",
+        "ResourceEnvironmentName": "LOCAL",
+        "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+        "Version": "2.0",
+        "ServiceBusConnection": "Endpoint=sb://localhost:5300;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;";
+    },
+    "Host": {
+        "LocalHttpPort": 7008,
+        "CORS": "*",
+        "CORSCredentials": false
+    }
+}
