@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "SFA.DAS.FundingRuleBridge.Jobs": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7010",
+      "launchBrowser": false
+    }
+  }
+}
