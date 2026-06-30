@@ -78,16 +78,11 @@
         },
         "EnableRouteTableAssociation": {
             "type": "bool",
-            "defaultValue": false,
-            "metadata": {
-                "description": "Determines whether to enable route table association on subnet"
-            }
+            "defaultValue": false
         },
         "SharedRouteTableName": {
             "type": "string",
-            "metadata": {
-                "description": "Determines whether to enable route table association on subnet"
-            }
+            "defaultValue": ""
         }
     },
     "variables": {
