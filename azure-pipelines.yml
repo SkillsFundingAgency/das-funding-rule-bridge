@@ -51,7 +51,6 @@ stages:
   variables:
   - group: DevTest Management Resources
   - group: AT DevTest Shared Resources
-  - group: AT das-funding-rule-bridge
   jobs:
   - template: pipeline-templates/job/deploy.yml
     parameters:
@@ -65,7 +64,6 @@ stages:
   variables:
   - group: DevTest Management Resources
   - group: TEST DevTest Shared Resources
-  - group: TEST das-funding-rule-bridge
   jobs:
   - template: pipeline-templates/job/deploy.yml
     parameters:
@@ -79,7 +77,6 @@ stages:
   variables:
   - group: DevTest Management Resources
   - group: TEST2 DevTest Shared Resources
-  - group: TEST2 das-funding-rule-bridge
   jobs:
   - template: pipeline-templates/job/deploy.yml
     parameters:
@@ -93,7 +90,6 @@ stages:
   variables:
   - group: PreProd Management Resources
   - group: PreProd Shared Resources
-  - group: PREPROD das-funding-rule-bridge
   jobs:
   - template: pipeline-templates/job/deploy.yml
     parameters:
@@ -107,7 +103,6 @@ stages:
 #   variables:
 #   - group: PROD Management Resources
 #   - group: PROD Shared Resources
-#   - group: PROD das-funding-rule-bridge
 #   jobs:
 #   - template: pipeline-templates/job/deploy.yml
 #     parameters:
@@ -121,7 +116,6 @@ stages:
 #   variables:
 #   - group: MO Management Resources
 #   - group: MO Shared Resources
-#   - group: MO das-funding-rule-bridge
 #   jobs:
 #   - template: pipeline-templates/job/deploy.yml
 #     parameters:
@@ -135,7 +129,6 @@ stages:
   variables:
   - group: DevTest Management Resources
   - group: DEMO DevTest Shared Resources
-  - group: DEMO das-funding-rule-bridge
   jobs:
   - template: pipeline-templates/job/deploy.yml
     parameters:
