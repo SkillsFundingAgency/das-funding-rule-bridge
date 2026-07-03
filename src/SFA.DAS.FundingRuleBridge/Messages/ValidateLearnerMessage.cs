@@ -4,7 +4,7 @@ public record ValidateLearnerMessage
 {
     public long JobId { get; init; }
     public string Ukprn { get; init; } = default!;
-    public string LearnRefNumber { get; init; } = default!;
+    public string Uln { get; init; } = default!;
     public DateOnly DateOfBirth { get; init; }
     public List<Course> Courses { get; init; } = [];
     public string Container { get; init; } = default!;

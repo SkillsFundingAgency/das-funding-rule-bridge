@@ -15,7 +15,7 @@ public class ValidateLearnerOrchestrator
 
         var request = new ValidationRequestMessage
         {
-            LearnRefNumber = input.LearnRefNumber,
+            Uln = input.Uln,
             DateOfBirth = input.DateOfBirth,
             Courses = input.Courses,
             OrchestrationInstanceId = context.InstanceId
