@@ -15,7 +15,9 @@ public class ValidateLearnerOrchestrator
 
         var request = new ValidationRequestMessage
         {
-            LearnerId = input.LearnerId,
+            LearnRefNumber = input.LearnRefNumber,
+            DateOfBirth = input.DateOfBirth,
+            Courses = input.Courses,
             OrchestrationInstanceId = context.InstanceId
         };
 
@@ -23,13 +25,10 @@ public class ValidateLearnerOrchestrator
 
         var callback = await context.WaitForExternalEvent<ValidationCallbackMessage>("ValidationComplete");
 
-        var result = new FundingRuleValidationResultMessage
+        return new FundingRuleValidationResultMessage
         {
-            LearnerId = callback.LearnerId
+            LearnRefNumber = callback.LearnRefNumber,
+            IsValid = callback.IsValid
         };
-
-        await context.CallActivityAsync(nameof(SendValidationResultActivity), result);
-
-        return result;
     }
 }

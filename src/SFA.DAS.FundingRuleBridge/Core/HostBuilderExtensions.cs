@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Azure.Messaging.ServiceBus;
+using Azure.Storage.Blobs;
+using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +45,8 @@ public static class HostBuilderExtensions
             var services = builder.Services;
             services.AddSingleton(sp =>
                 new ServiceBusClient(sp.GetRequiredService<IConfiguration>()["ServiceBusConnection"]));
+            services.AddSingleton<IIlrBlobStorageClient>(sp =>
+                new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
             return builder;
         }
     }
