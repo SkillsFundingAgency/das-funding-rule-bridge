@@ -22,6 +22,7 @@ public class ValidateLearnerEndpoint(ILogger<ValidateLearnerEndpoint> logger)
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(ValidateLearnerOrchestrator), input);
 
-        logger.LogInformation("Started orchestration '{InstanceId}' for learner '{LearnRefNumber}'.", instanceId, input.LearnRefNumber);
+        logger.LogInformation("Started orchestration '{InstanceId}' for job {JobId} (CorrelationId: {CorrelationId}).",
+            instanceId, input.JobId, message.CorrelationId);
     }
 }

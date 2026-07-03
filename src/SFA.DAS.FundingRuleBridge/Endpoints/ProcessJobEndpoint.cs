@@ -22,7 +22,7 @@ public class ProcessJobEndpoint(ILogger<ProcessJobEndpoint> logger)
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(ProcessJobOrchestrator), job);
 
-        logger.LogInformation("Started orchestration '{InstanceId}' for job {JobId} (UkPrn: {UkPrn}).",
-            instanceId, job.JobId, job.KeyValuePairs?.Ukprn);
+        logger.LogInformation("Started orchestration '{InstanceId}' for job {JobId} (UkPrn: {UkPrn}, CorrelationId: {CorrelationId}).",
+            instanceId, job.JobId, job.KeyValuePairs?.Ukprn, message.CorrelationId);
     }
 }

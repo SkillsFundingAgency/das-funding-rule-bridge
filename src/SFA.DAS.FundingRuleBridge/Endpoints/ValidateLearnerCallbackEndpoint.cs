@@ -20,6 +20,7 @@ public class ValidateLearnerCallbackEndpoint(ILogger<ValidateLearnerCallbackEndp
 
         await durableClient.RaiseEventAsync(callback.OrchestrationInstanceId, "ValidationComplete", callback);
 
-        logger.LogInformation("Raised ValidationComplete event for orchestration '{InstanceId}'.", callback.OrchestrationInstanceId);
+        logger.LogInformation("Raised ValidationComplete event for orchestration '{InstanceId}' (CorrelationId: {CorrelationId}).",
+            callback.OrchestrationInstanceId, message.CorrelationId);
     }
 }

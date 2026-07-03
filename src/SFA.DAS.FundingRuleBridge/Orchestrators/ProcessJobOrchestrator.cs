@@ -15,7 +15,7 @@ public class ProcessJobOrchestrator
         var logger = context.CreateReplaySafeLogger<ProcessJobOrchestrator>();
         var job = context.GetInput<ProcessJobMessage>()!;
 
-        logger.LogInformation("Processing job {JobId} for UkPrn {UkPrn}.", job.JobId, job.KeyValuePairs.Ukprn);
+        logger.LogInformation("Processing job {JobId} for UkPrn {UkPrn} (InstanceId: {InstanceId}).", job.JobId, job.KeyValuePairs.Ukprn, context.InstanceId);
 
         var fileRef = new IlrFileReference
         {
@@ -26,7 +26,7 @@ public class ProcessJobOrchestrator
         var learners = await context.CallActivityAsync<List<LearnerSummary>>(
             nameof(DownloadAndParseIlrActivity), fileRef);
 
-        logger.LogInformation("Found {LearnerCount} learners in job {JobId}.", learners.Count, job.JobId);
+        logger.LogInformation("Found {LearnerCount} learners in job {JobId} (InstanceId: {InstanceId}).", learners.Count, job.JobId, context.InstanceId);
 
         var subOrchestrations = learners.Select(learner =>
             context.CallSubOrchestratorAsync<FundingRuleValidationResultMessage>(
@@ -35,7 +35,7 @@ public class ProcessJobOrchestrator
                 {
                     JobId = job.JobId,
                     Ukprn = job.KeyValuePairs.Ukprn,
-                    LearnRefNumber = learner.LearnRefNumber,
+                    Uln = learner.LearnRefNumber,
                     DateOfBirth = learner.DateOfBirth,
                     Courses = learner.Courses,
                     Container = job.KeyValuePairs.Container,
@@ -57,7 +57,7 @@ public class ProcessJobOrchestrator
 
         await context.CallActivityAsync(nameof(SendJobCompleteActivity), jobComplete);
 
-        logger.LogInformation("Job {JobId} complete. Valid: {ValidCount}, Invalid: {InvalidCount}.",
-            job.JobId, jobComplete.ValidCount, jobComplete.InvalidCount);
+        logger.LogInformation("Job {JobId} complete. Valid: {ValidCount}, Invalid: {InvalidCount} (InstanceId: {InstanceId}).",
+            job.JobId, jobComplete.ValidCount, jobComplete.InvalidCount, context.InstanceId);
     }
 }

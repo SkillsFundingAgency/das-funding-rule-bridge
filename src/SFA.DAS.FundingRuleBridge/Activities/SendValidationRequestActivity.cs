@@ -16,7 +16,7 @@ public class SendValidationRequestActivity(ServiceBusClient serviceBusClient, IL
         var body = JsonSerializer.Serialize(request);
         var sender = serviceBusClient.CreateSender("validation-requests");
         await sender.SendMessageAsync(new ServiceBusMessage(body));
-        logger.LogInformation("Sent validation request for learner '{LearnRefNumber}' with orchestration '{InstanceId}'.",
-            request.LearnRefNumber, request.OrchestrationInstanceId);
+        logger.LogInformation("Sent validation request with orchestration '{InstanceId}'.",
+            request.OrchestrationInstanceId);
     }
 }
