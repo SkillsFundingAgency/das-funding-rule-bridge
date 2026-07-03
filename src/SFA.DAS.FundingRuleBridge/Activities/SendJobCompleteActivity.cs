@@ -8,7 +8,7 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Activities;
 
 public class SendJobCompleteActivity(ServiceBusClient serviceBusClient, ILogger<SendJobCompleteActivity> logger)
 {
-    private readonly ServiceBusSender _sender = serviceBusClient.CreateSender("job-complete");
+    
 
     [Function(nameof(SendJobCompleteActivity))]
     public async Task Run(
@@ -16,7 +16,8 @@ public class SendJobCompleteActivity(ServiceBusClient serviceBusClient, ILogger<
         FunctionContext context)
     {
         var body = JsonSerializer.Serialize(message);
-        await _sender.SendMessageAsync(new ServiceBusMessage(body));
+        var sender = serviceBusClient.CreateSender("job-complete");
+        await sender.SendMessageAsync(new ServiceBusMessage(body));
         logger.LogInformation("Sent job-complete message for job {JobId}.", message.JobId);
     }
 }

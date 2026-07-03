@@ -12,7 +12,7 @@ public class ProcessJobEndpoint(ILogger<ProcessJobEndpoint> logger)
 {
     [Function(nameof(ProcessJobTrigger))]
     public async Task ProcessJobTrigger(
-        [ServiceBusTrigger("process-job", Connection = "ServiceBusConnection")] ServiceBusReceivedMessage message,
+        [ServiceBusTrigger("process-job", Connection = "IncomingServiceBusConnection")] ServiceBusReceivedMessage message,
         [DurableClient] DurableTaskClient durableClient,
         FunctionContext executionContext)
     {
