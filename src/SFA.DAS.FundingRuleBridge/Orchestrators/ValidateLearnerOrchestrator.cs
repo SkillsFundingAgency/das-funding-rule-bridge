@@ -13,13 +13,12 @@ public class ValidateLearnerOrchestrator
     {
         var input = context.GetInput<ValidateLearnerMessage>()!;
 
-        var request = new ValidationRequestMessage
-        {
-            Uln = input.Uln,
-            DateOfBirth = input.DateOfBirth,
-            Courses = input.Courses,
-            OrchestrationInstanceId = context.InstanceId
-        };
+        var request = new ValidationRequestMessage(
+            input.Ukprn,
+            input.Uln,
+            input.Courses,
+            input.CorrelationId
+        );
 
         await context.CallActivityAsync(nameof(SendValidationRequestActivity), request);
 

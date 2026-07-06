@@ -34,6 +34,7 @@ public class ProcessJobOrchestrator
                 new ValidateLearnerMessage
                 {
                     JobId = job.JobId,
+                    CorrelationId = context.InstanceId,
                     Ukprn = job.KeyValuePairs.Ukprn,
                     Uln = learner.LearnRefNumber,
                     DateOfBirth = learner.DateOfBirth,
