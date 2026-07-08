@@ -5,7 +5,7 @@
         "Name": "sbemulatorns",
         "Queues": [
           {
-            "Name": "validate-learner",
+            "Name": "validate-learner-requests",
             "Properties": {
               "DeadLetteringOnMessageExpiration": true,
               "DefaultMessageTimeToLive": "PT1H",
