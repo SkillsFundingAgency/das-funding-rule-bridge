@@ -16,17 +16,6 @@
             }
           },
           {
-            "Name": "validation-requests",
-            "Properties": {
-              "DeadLetteringOnMessageExpiration": true,
-              "DefaultMessageTimeToLive": "PT1H",
-              "LockDuration": "PT1M",
-              "MaxDeliveryCount": 10,
-              "RequiresDuplicateDetection": false,
-              "RequiresSession": false
-            }
-          },
-          {
             "Name": "validate-learner-callback",
             "Properties": {
               "DeadLetteringOnMessageExpiration": true,
