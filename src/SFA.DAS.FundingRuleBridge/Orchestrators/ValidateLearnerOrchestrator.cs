@@ -1,6 +1,8 @@
+using ESFA.DC.ILR.IO.Model.Validation;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using SFA.DAS.FundingRuleBridge.Jobs.Activities;
+using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
@@ -8,8 +10,7 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
 public class ValidateLearnerOrchestrator
 {
     [Function(nameof(ValidateLearnerOrchestrator))]
-    public static async Task<FundingRuleValidationResultMessage> RunOrchestrator(
-        [OrchestrationTrigger] TaskOrchestrationContext context)
+    public static async Task<ValidationSummary> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
         var input = context.GetInput<ValidateLearnerMessage>()!;
 
@@ -21,13 +22,34 @@ public class ValidateLearnerOrchestrator
         );
 
         await context.CallActivityAsync(nameof(SendValidationRequestActivity), request);
+        var validationResult = await context.WaitForExternalEvent<ValidateLearnerResult>("ValidationComplete");
 
-        var callback = await context.WaitForExternalEvent<ValidationCallbackMessage>("ValidationComplete");
+        var passedCount = validationResult.RuleOutcomes.Count(x => x.Outcome == RuleOutcome.Success);
+        var failed = validationResult.RuleOutcomes
+            .Where(x => x.Outcome != RuleOutcome.Success)
+            .Select(x => new ValidationError
+            {
+                LearnerReferenceNumber = validationResult.Uln,
+                AimSequenceNumber = x.AimSequenceNumber,
+                RuleName = x.RuleName,
+                Severity = "E",
+                ValidationErrorParameters = MapValidationErrorParameters(x.FundingRestrictions)
+            })
+            .ToList(); 
+        
+        return new ValidationSummary(passedCount, failed);
+    }
 
-        return new FundingRuleValidationResultMessage
-        {
-            LearnRefNumber = callback.LearnRefNumber,
-            IsValid = callback.IsValid
-        };
+    private static List<ValidationErrorParameter> MapValidationErrorParameters(IEnumerable<FundingRestriction> fundingRestrictions)
+    {
+        return fundingRestrictions
+            .Where(x => x != FundingRestriction.Unknown)
+            .Select(fundingRestriction =>
+                new ValidationErrorParameter
+                {
+                    PropertyName = ValidationErrorParameterPropertyNameMapper.Map(fundingRestriction.RestrictionName),
+                    Value = fundingRestriction.RestrictedValue
+                })
+            .ToList();
     }
 }
