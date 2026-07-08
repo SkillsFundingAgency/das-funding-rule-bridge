@@ -59,6 +59,7 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
         return new Course
         {
             Id = delivery.LearnAimRef,
+            AimSequenceNumber = delivery.AimSeqNumber,
             Type = progType == 25 ? CourseType.Apprenticeship : CourseType.ShortCourse, // TODO: add FunctionalSkill mapping once ILR field/value is confirmed
             TrainingType = progType == 25 ? TrainingType.Standard : TrainingType.ShortCourse,
             StandardCode = delivery.StdCodeSpecified ? delivery.StdCode : null,
