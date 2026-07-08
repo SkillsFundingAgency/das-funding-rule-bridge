@@ -41,15 +41,15 @@ ProcessJobOrchestrator
   Per learner — ValidateLearnerOrchestrator
     a. SendValidationRequestActivity
          Sends { LearnRefNumber, DateOfBirth, OrchestrationInstanceId }
-         → [validation-requests queue] (consumed by external funding rules service)
+         → [validate-learner-requests queue]
+         (consumed by the external funding rules validation service —
+          handled in a separate solution)
     b. WaitForExternalEvent("ValidationComplete")
          Durably paused until the external service responds.
         │
         ▼
-  External service processes learner and sends callback
-        │
-        ▼
-[validate-learner-callback queue]
+  [validate-learner-requests-callback queue]
+  ◄── External funding rules service posts callback message here
         │
         ▼
   ValidateLearnerCallbackTrigger
@@ -71,8 +71,8 @@ ProcessJobOrchestrator
 | Queue | Direction | Purpose |
 |---|---|---|
 | `process-job` | Inbound | Triggers processing of a new ILR job |
-| `validation-requests` | Outbound | Per-learner validation request to external service |
-| `validate-learner-callback` | Inbound | Per-learner response from external service |
+| `validate-learner` | Outbound | Per-learner validation request to the external funding rules service |
+| `validate-learner-callback` | Inbound | Per-learner response from the external funding rules service |
 | `job-complete` | Outbound | Job summary once all learners are processed |
 
 ### Failure Semantics
