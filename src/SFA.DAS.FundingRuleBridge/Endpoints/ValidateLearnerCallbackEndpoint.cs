@@ -4,6 +4,7 @@ using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 using System.Text.Json;
+using SFA.DAS.FundingRuleBridge.Jobs.Core;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Endpoints;
 
@@ -11,7 +12,7 @@ public class ValidateLearnerCallbackEndpoint(ILogger<ValidateLearnerCallbackEndp
 {
     [Function(nameof(ValidateLearnerCallbackTrigger))]
     public async Task ValidateLearnerCallbackTrigger(
-        [ServiceBusTrigger("validate-learner-callback", Connection = "ServiceBusConnection")] ServiceBusReceivedMessage message,
+        [ServiceBusTrigger(GlobalConstants.ValidationCallbackQueue, Connection = "ServiceBusConnection")] ServiceBusReceivedMessage message,
         [DurableClient] DurableTaskClient durableClient,
         FunctionContext executionContext)
     {

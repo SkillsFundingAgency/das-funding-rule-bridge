@@ -3,6 +3,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 using System.Text.Json;
+using SFA.DAS.FundingRuleBridge.Jobs.Core;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Activities;
 
@@ -14,7 +15,7 @@ public class SendValidationRequestActivity(ServiceBusClient serviceBusClient, IL
         FunctionContext context)
     {
         var body = JsonSerializer.Serialize(request);
-        await using var sender = serviceBusClient.CreateSender("validate-learner-requests");
+        await using var sender = serviceBusClient.CreateSender(GlobalConstants.ValidationRequestsQueue);
         await sender.SendMessageAsync(new ServiceBusMessage(body));
         logger.LogInformation("Sent validation request with correlationId '{CorrelationId}'.", request.CorrelationId);
     }

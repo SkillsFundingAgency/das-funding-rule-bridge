@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 using SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
 using System.Text.Json;
+using SFA.DAS.FundingRuleBridge.Jobs.Core;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Endpoints;
 
@@ -13,7 +14,7 @@ public class ProcessJobEndpoint(ILogger<ProcessJobEndpoint> logger)
 {
     [Function(nameof(ProcessJobTrigger))]
     public async Task ProcessJobTrigger(
-        [ServiceBusTrigger("process-job", Connection = "IncomingServiceBusConnection")] ServiceBusReceivedMessage message,
+        [ServiceBusTrigger(GlobalConstants.IncomingJobQueue, Connection = "IncomingServiceBusConnection")] ServiceBusReceivedMessage message,
         [DurableClient] DurableTaskClient durableClient,
         FunctionContext executionContext)
     {
