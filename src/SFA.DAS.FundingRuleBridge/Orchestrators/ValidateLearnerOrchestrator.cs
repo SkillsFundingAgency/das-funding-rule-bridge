@@ -35,9 +35,10 @@ public class ValidateLearnerOrchestrator
                 Severity = "E",
                 ValidationErrorParameters = MapValidationErrorParameters(x.FundingRestrictions)
             })
-            .ToList(); 
-        
-        return new ValidationSummary(passedCount, failed);
+            .ToList();
+
+        var isValid = validationResult.RuleOutcomes.All(x => x.Outcome == RuleOutcome.Success);
+        return new ValidationSummary(isValid, failed);
     }
 
     private static List<ValidationErrorParameter> MapValidationErrorParameters(IEnumerable<FundingRestriction> fundingRestrictions)

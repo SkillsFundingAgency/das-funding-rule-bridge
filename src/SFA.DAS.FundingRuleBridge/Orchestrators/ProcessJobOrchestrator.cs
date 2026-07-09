@@ -71,8 +71,8 @@ public class ProcessJobOrchestrator
             JobId = job.JobId,
             Ukprn = job.KeyValuePairs.Ukprn,
             TotalLearners = results.Length,
-            ValidCount = results.Sum(x => x.PassedCount),
-            InvalidCount = results.Sum(x => x.ValidationErrors.Count)
+            ValidCount = results.Count(x => x.IsValid),
+            InvalidCount = results.Count(x => !x.IsValid)
         };
 
         await context.CallActivityAsync(nameof(SendJobCompleteActivity), jobComplete);
