@@ -70,11 +70,12 @@ public class ProcessJobOrchestrator
             // nothing to write
             return;
         }
-        
-        var writeSummaryRequest = new WriteJobResultsRequest()
+
+        var writeSummaryRequest = new WriteJobResultsRequest
         {
             JobId = job.JobId,
             ContainerName = job.KeyValuePairs.Container,
+            Path = Path.GetDirectoryName(job.KeyValuePairs.Filename) ?? string.Empty,
             ValidationErrors = results.SelectMany(x => x.ValidationErrors).ToList()
         };
         await context.CallActivityAsync(nameof(WriteJobsResultsActivity), writeSummaryRequest);

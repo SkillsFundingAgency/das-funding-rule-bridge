@@ -6,5 +6,6 @@ public class WriteJobResultsRequest
 {
     public long JobId { get; set; }
     public required string ContainerName { get; set; }
+    public required string Path { get; set; }
     public required List<ValidationError> ValidationErrors { get; set; }
 }
