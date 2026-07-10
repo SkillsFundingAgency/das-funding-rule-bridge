@@ -52,6 +52,7 @@ public class ValidateLearnerOrchestrator
             catch (TaskCanceledException)
             {
                 // timeout occured
+                logger.LogError("Timed out waiting for validation result, marking as invalid");
                 return new ValidationSummary(false, []);
             }
         }
