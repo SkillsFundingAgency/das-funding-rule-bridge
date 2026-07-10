@@ -10,6 +10,8 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
 
 public class ValidateLearnerOrchestrator
 {
+    private const int ValidationTimeoutInHours = 1;
+    
     [Function(nameof(ValidateLearnerOrchestrator))]
     public static async Task<ValidationSummary> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
@@ -27,23 +29,31 @@ public class ValidateLearnerOrchestrator
         {
             await context.CallActivityAsync(nameof(SendValidationRequestActivity), request);
             logger.LogInformation("Sent validation request, waiting for result");
-            var validationResult = await context.WaitForExternalEvent<ValidateLearnerResult>("ValidationComplete");
 
-            logger.LogInformation("Received validation result");
-            var failed = validationResult.RuleOutcomes
-                .Where(x => x.Outcome != RuleOutcome.Success)
-                .Select(x => new ValidationError
-                {
-                    LearnerReferenceNumber = validationResult.Uln,
-                    AimSequenceNumber = x.AimSequenceNumber,
-                    RuleName = x.RuleName,
-                    Severity = "E",
-                    ValidationErrorParameters = MapValidationErrorParameters(x.FundingRestrictions)
-                })
-                .ToList();
+            try
+            {
+                var validationResult = await context.WaitForExternalEvent<ValidateLearnerResult>("ValidationComplete", TimeSpan.FromHours(ValidationTimeoutInHours));
+                logger.LogInformation("Received validation result");
+                var failed = validationResult.RuleOutcomes
+                    .Where(x => x.Outcome != RuleOutcome.Success)
+                    .Select(x => new ValidationError
+                    {
+                        LearnerReferenceNumber = validationResult.Uln,
+                        AimSequenceNumber = x.AimSequenceNumber,
+                        RuleName = x.RuleName,
+                        Severity = "E",
+                        ValidationErrorParameters = MapValidationErrorParameters(x.FundingRestrictions)
+                    })
+                    .ToList();
 
-            var isValid = validationResult.RuleOutcomes.All(x => x.Outcome == RuleOutcome.Success);
-            return new ValidationSummary(isValid, failed);
+                var isValid = validationResult.RuleOutcomes.All(x => x.Outcome == RuleOutcome.Success);
+                return new ValidationSummary(isValid, failed);
+            }
+            catch (TaskCanceledException)
+            {
+                // timeout occured
+                return new ValidationSummary(false, []);
+            }
         }
     }
 
