@@ -10,9 +10,20 @@
             "enableLiveMetricsFilters": true
         },
         "logLevel": {
-            "default": "Debug",
-            "Host": "Debug",
-            "Function": "Debug"
+            "default": "Information",
+            "Host": "Information",
+            "Function": "Information"
+        }
+    },
+    "extensions": {
+        "serviceBus": {
+            "autoCompleteMessages": true
+        },
+        "durableTask": {
+            "tracing": {
+                "distributedTracingEnabled": true,
+                "version": "V2"
+            }
         }
     }
 }
