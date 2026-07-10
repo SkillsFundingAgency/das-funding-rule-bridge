@@ -12,14 +12,14 @@ public class ValidateLearnerCallbackEndpoint(ILogger<ValidateLearnerCallbackEndp
 {
     [Function(nameof(ValidateLearnerCallbackTrigger))]
     public async Task ValidateLearnerCallbackTrigger(
-        [ServiceBusTrigger(GlobalConstants.ValidationCallbackQueue, Connection = "ServiceBusConnection")] ServiceBusReceivedMessage message,
+        [ServiceBusTrigger(QueueConstants.ValidationCallbackQueue, Connection = QueueConstants.InternalServiceBusConnectionString)] ServiceBusReceivedMessage message,
         [DurableClient] DurableTaskClient durableClient,
         FunctionContext executionContext)
     {
         var callback = JsonSerializer.Deserialize<ValidateLearnerResult>(message.Body)
             ?? throw new InvalidOperationException("Failed to deserialise ValidationCallbackMessage.");
 
-        await durableClient.RaiseEventAsync(callback.CorrelationId, "ValidationComplete", callback);
+        await durableClient.RaiseEventAsync(callback.WaitingInstanceId, "ValidationComplete", callback);
 
         logger.LogInformation("Raised ValidationComplete event for orchestration '{InstanceId}' (CorrelationId: {CorrelationId}).",
             callback.CorrelationId, message.CorrelationId);

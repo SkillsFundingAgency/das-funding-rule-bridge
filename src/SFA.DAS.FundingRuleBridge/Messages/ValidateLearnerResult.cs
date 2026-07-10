@@ -4,6 +4,7 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Messages;
 
 public record ValidateLearnerResult(
     string CorrelationId,
+    string WaitingInstanceId,
     string Ukprn,
     string Uln,
     ValidationStatus Status,

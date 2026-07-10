@@ -14,7 +14,7 @@ public class ProcessJobEndpoint(ILogger<ProcessJobEndpoint> logger)
 {
     [Function(nameof(ProcessJobTrigger))]
     public async Task ProcessJobTrigger(
-        [ServiceBusTrigger(GlobalConstants.IncomingJobQueue, Connection = "IncomingServiceBusConnection")] ServiceBusReceivedMessage message,
+        [ServiceBusTrigger(QueueConstants.IncomingJobQueue, Connection = QueueConstants.ExternalServiceBusConnectionString)] ServiceBusReceivedMessage message,
         [DurableClient] DurableTaskClient durableClient,
         FunctionContext executionContext)
     {

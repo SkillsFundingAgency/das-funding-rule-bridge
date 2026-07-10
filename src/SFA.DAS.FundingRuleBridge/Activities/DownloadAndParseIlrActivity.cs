@@ -23,7 +23,7 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
         var containerClient = blobServiceClient.GetBlobContainerClient(fileRef.Container);
         var blobClient = containerClient.GetBlobClient(fileRef.Filename);
 
-        await using var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false));
+        await using var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false), context.CancellationToken);
         var message = (Message)Serializer.Deserialize(stream)!;
 
         var learners = (message.Learner ?? [])

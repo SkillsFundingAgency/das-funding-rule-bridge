@@ -43,10 +43,17 @@ public static class HostBuilderExtensions
         private FunctionsApplicationBuilder RegisterDependencies()
         {
             var services = builder.Services;
-            services.AddSingleton(sp =>
-                new ServiceBusClient(sp.GetRequiredService<IConfiguration>()["ServiceBusConnection"]));
-            services.AddSingleton<IIlrBlobStorageClient>(sp =>
-                new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
+            services.AddKeyedSingleton(
+                typeof(ServiceBusClient),
+                QueueConstants.ExternalBusKey,
+                (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.ExternalServiceBusConnectionString]));
+            
+            services.AddKeyedSingleton(
+                typeof(ServiceBusClient),
+                QueueConstants.InternalBusKey,
+                (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.InternalServiceBusConnectionString]));
+            
+            services.AddSingleton<IIlrBlobStorageClient>(sp => new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
             return builder;
         }
     }

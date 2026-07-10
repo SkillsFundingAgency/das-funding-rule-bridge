@@ -18,13 +18,13 @@ public class ValidateLearnerOrchestrator
             input.Ukprn,
             input.Uln,
             input.Courses,
-            input.CorrelationId
+            input.CorrelationId,
+            context.InstanceId
         );
 
         await context.CallActivityAsync(nameof(SendValidationRequestActivity), request);
         var validationResult = await context.WaitForExternalEvent<ValidateLearnerResult>("ValidationComplete");
 
-        var passedCount = validationResult.RuleOutcomes.Count(x => x.Outcome == RuleOutcome.Success);
         var failed = validationResult.RuleOutcomes
             .Where(x => x.Outcome != RuleOutcome.Success)
             .Select(x => new ValidationError
