@@ -1,6 +1,7 @@
 using ESFA.DC.ILR.IO.Model.Validation;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using SFA.DAS.FundingRuleBridge.Jobs.Activities;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
@@ -12,6 +13,7 @@ public class ValidateLearnerOrchestrator
     [Function(nameof(ValidateLearnerOrchestrator))]
     public static async Task<ValidationSummary> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
+        var logger = context.CreateReplaySafeLogger<ValidateLearnerOrchestrator>();
         var input = context.GetInput<ValidateLearnerMessage>()!;
         var request = new ValidationRequestMessage(
             input.Ukprn,
@@ -21,23 +23,28 @@ public class ValidateLearnerOrchestrator
             context.InstanceId
         );
 
-        await context.CallActivityAsync(nameof(SendValidationRequestActivity), request);
-        var validationResult = await context.WaitForExternalEvent<ValidateLearnerResult>("ValidationComplete");
+        using (logger.BeginScope(new Dictionary<string, object> { { "SubInstanceId", context.InstanceId } }))
+        {
+            await context.CallActivityAsync(nameof(SendValidationRequestActivity), request);
+            logger.LogInformation("Sent validation request, waiting for result");
+            var validationResult = await context.WaitForExternalEvent<ValidateLearnerResult>("ValidationComplete");
 
-        var failed = validationResult.RuleOutcomes
-            .Where(x => x.Outcome != RuleOutcome.Success)
-            .Select(x => new ValidationError
-            {
-                LearnerReferenceNumber = validationResult.Uln,
-                AimSequenceNumber = x.AimSequenceNumber,
-                RuleName = x.RuleName,
-                Severity = "E",
-                ValidationErrorParameters = MapValidationErrorParameters(x.FundingRestrictions)
-            })
-            .ToList();
+            logger.LogInformation("Received validation result");
+            var failed = validationResult.RuleOutcomes
+                .Where(x => x.Outcome != RuleOutcome.Success)
+                .Select(x => new ValidationError
+                {
+                    LearnerReferenceNumber = validationResult.Uln,
+                    AimSequenceNumber = x.AimSequenceNumber,
+                    RuleName = x.RuleName,
+                    Severity = "E",
+                    ValidationErrorParameters = MapValidationErrorParameters(x.FundingRestrictions)
+                })
+                .ToList();
 
-        var isValid = validationResult.RuleOutcomes.All(x => x.Outcome == RuleOutcome.Success);
-        return new ValidationSummary(isValid, failed);
+            var isValid = validationResult.RuleOutcomes.All(x => x.Outcome == RuleOutcome.Success);
+            return new ValidationSummary(isValid, failed);
+        }
     }
 
     private static List<ValidationErrorParameter> MapValidationErrorParameters(IEnumerable<FundingRestriction> fundingRestrictions)
