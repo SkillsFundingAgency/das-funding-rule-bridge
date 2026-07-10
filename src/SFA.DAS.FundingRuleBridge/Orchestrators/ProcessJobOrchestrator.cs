@@ -1,4 +1,3 @@
-using ESFA.DC.ILR.IO.Model.Validation;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -26,7 +25,7 @@ public class ProcessJobOrchestrator
 
         var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), fileRef);
         var results = await RunValidation(context, job, learners, logger);
-        await WriteJobFiles(context, job, results, logger);
+        await WriteJobFiles(context, job, results);
         await CompleteJob(context, job, results, logger);
     }
 
@@ -53,8 +52,14 @@ public class ProcessJobOrchestrator
         return await Task.WhenAll(subOrchestrations);
     }
 
-    private static async Task WriteJobFiles(TaskOrchestrationContext context, ProcessJobMessage job, ValidationSummary[] results, ILogger logger)
+    private static async Task WriteJobFiles(TaskOrchestrationContext context, ProcessJobMessage job, ValidationSummary[] results)
     {
+        if (results.All(x => x.IsValid))
+        {
+            // nothing to write
+            return;
+        }
+        
         var writeSummaryRequest = new WriteJobResultsRequest()
         {
             JobId = job.JobId,
