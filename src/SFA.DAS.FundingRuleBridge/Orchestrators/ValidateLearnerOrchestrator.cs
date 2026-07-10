@@ -13,7 +13,6 @@ public class ValidateLearnerOrchestrator
     public static async Task<ValidationSummary> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
         var input = context.GetInput<ValidateLearnerMessage>()!;
-
         var request = new ValidationRequestMessage(
             input.Ukprn,
             input.Uln,

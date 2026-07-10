@@ -20,6 +20,6 @@ public class SendJobCompleteActivity(
         var body = JsonSerializer.Serialize(message);
         await using var sender = serviceBusClient.CreateSender(QueueConstants.OutgoingJobQueue);
         await sender.SendMessageAsync(new ServiceBusMessage(body), context.CancellationToken);
-        logger.LogInformation("Sent job-complete message for job {JobId}.", message.JobId);
+        logger.LogInformation("Sent job-complete message");
     }
 }

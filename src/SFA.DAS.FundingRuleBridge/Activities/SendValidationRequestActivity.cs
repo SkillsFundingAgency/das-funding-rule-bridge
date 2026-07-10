@@ -13,13 +13,11 @@ public class SendValidationRequestActivity(
     ILogger<SendValidationRequestActivity> logger)
 {
     [Function(nameof(SendValidationRequestActivity))]
-    public async Task Run(
-        [ActivityTrigger] ValidationRequestMessage request,
-        FunctionContext context)
+    public async Task Run([ActivityTrigger] ValidationRequestMessage request, FunctionContext context)
     {
         var body = JsonSerializer.Serialize(request);
         await using var sender = serviceBusClient.CreateSender(QueueConstants.ValidationRequestsQueue);
         await sender.SendMessageAsync(new ServiceBusMessage(body), context.CancellationToken);
-        logger.LogInformation("Sent validation request with correlationId '{CorrelationId}'.", request.CorrelationId);
+        logger.LogInformation("Sent validation request");
     }
 }

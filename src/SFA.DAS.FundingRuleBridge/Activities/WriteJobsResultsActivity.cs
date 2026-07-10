@@ -17,18 +17,19 @@ public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceC
         var client = blobServiceClient.GetBlobContainerClient(request.ContainerName);
         var learnerRefs = request.ValidationErrors
             .DistinctBy(x => x.LearnerReferenceNumber)
+            .Select(x => x.LearnerReferenceNumber)
             .ToList();
         
         await client.UploadBlobAsync(InvalidLearnersFilename, BinaryData.FromString(JsonSerializer.Serialize(learnerRefs)), context.CancellationToken);
-        LogSummaryFileWritten(request.JobId, learnerRefs.Count, request.ContainerName, InvalidLearnersFilename);
+        LogSummaryFileWritten(learnerRefs.Count, request.ContainerName, InvalidLearnersFilename);
         
         await client.UploadBlobAsync(ValidationErrorsFilename, BinaryData.FromString(JsonSerializer.Serialize(request.ValidationErrors)), context.CancellationToken);
-        LogValidationErrorsWritten(request.JobId, learnerRefs.Count, request.ContainerName, ValidationErrorsFilename);
+        LogValidationErrorsWritten(learnerRefs.Count, request.ContainerName, ValidationErrorsFilename);
     }
 
-    [LoggerMessage(LogLevel.Information, "{JobId}: Wrote {FailedLearnerRefCount} unique learner refs to {ContainerName}/{InvalidLearnersFilename}")]
-    partial void LogSummaryFileWritten(long jobId, int failedLearnerRefCount, string containerName, string invalidLearnersFilename);
+    [LoggerMessage(LogLevel.Information, "Wrote {FailedLearnerRefCount} unique learner refs to {ContainerName}/{InvalidLearnersFilename}")]
+    partial void LogSummaryFileWritten(int failedLearnerRefCount, string containerName, string invalidLearnersFilename);
 
-    [LoggerMessage(LogLevel.Information, "{JobId}: Wrote {ValidationErrorCount} validation error records to {ContainerName}/{ValidationErrorsFilename}")]
-    partial void LogValidationErrorsWritten(long jobId, int validationErrorCount, string containerName, string validationErrorsFilename);
+    [LoggerMessage(LogLevel.Information, "Wrote {ValidationErrorCount} validation error records to {ContainerName}/{ValidationErrorsFilename}")]
+    partial void LogValidationErrorsWritten(int validationErrorCount, string containerName, string validationErrorsFilename);
 }

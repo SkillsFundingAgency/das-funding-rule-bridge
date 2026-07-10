@@ -10,28 +10,36 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
 public class ProcessJobOrchestrator
 {
     [Function(nameof(ProcessJobOrchestrator))]
-    public static async Task RunOrchestrator(
-        [OrchestrationTrigger] TaskOrchestrationContext context)
+    public static async Task RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
         var logger = context.CreateReplaySafeLogger<ProcessJobOrchestrator>();
         var job = context.GetInput<ProcessJobMessage>()!;
 
-        logger.LogInformation("Processing job {JobId} for UkPrn {UkPrn} (InstanceId: {InstanceId}).", job.JobId, job.KeyValuePairs.Ukprn, context.InstanceId);
-        var fileRef = new IlrFileReference
+        var properties = new Dictionary<string, object>
         {
-            Container = job.KeyValuePairs.Container,
-            Filename = job.KeyValuePairs.Filename
+            { "CorrelationId", context.InstanceId },
+            { "JobId", job.JobId },
         };
+        
+        using (logger.BeginScope(properties))
+        {
+            logger.LogInformation("Processing job for UkPrn {UkPrn}", job.KeyValuePairs.Ukprn);
+            var fileRef = new IlrFileReference
+            {
+                Container = job.KeyValuePairs.Container,
+                Filename = job.KeyValuePairs.Filename
+            };
 
-        var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), fileRef);
-        var results = await RunValidation(context, job, learners, logger);
-        await WriteJobFiles(context, job, results);
-        await CompleteJob(context, job, results, logger);
+            var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), fileRef);
+            var results = await RunValidation(context, job, learners, logger);
+            await WriteJobFiles(context, job, results);
+            await CompleteJob(context, job, results, logger);    
+        }
     }
 
     private static async Task<ValidationSummary[]> RunValidation(TaskOrchestrationContext context, ProcessJobMessage job, List<LearnerSummary> learners, ILogger logger)
     {
-        logger.LogInformation("Found {LearnerCount} learners in job {JobId} (InstanceId: {InstanceId}).", learners.Count, job.JobId, context.InstanceId);
+        logger.LogInformation("Fan out started");
         var subOrchestrations = learners.Select(learner =>
             context.CallSubOrchestratorAsync<ValidationSummary>(
                 nameof(ValidateLearnerOrchestrator),
@@ -49,7 +57,10 @@ public class ProcessJobOrchestrator
 
         // all learners are validated regardless of individual pass/fail outcomes;
         // only an infrastructure exception will cause Task.WhenAll to throw
-        return await Task.WhenAll(subOrchestrations);
+        var results = await Task.WhenAll(subOrchestrations);
+        logger.LogInformation("Fan in complete");
+        
+        return results;
     }
 
     private static async Task WriteJobFiles(TaskOrchestrationContext context, ProcessJobMessage job, ValidationSummary[] results)
@@ -71,7 +82,7 @@ public class ProcessJobOrchestrator
 
     private static async Task CompleteJob(TaskOrchestrationContext context, ProcessJobMessage job, ValidationSummary[] results, ILogger logger)
     {
-        var jobComplete = new JobCompleteMessage
+        var message = new JobCompleteMessage
         {
             JobId = job.JobId,
             Ukprn = job.KeyValuePairs.Ukprn,
@@ -80,9 +91,7 @@ public class ProcessJobOrchestrator
             InvalidCount = results.Count(x => !x.IsValid)
         };
 
-        await context.CallActivityAsync(nameof(SendJobCompleteActivity), jobComplete);
-
-        logger.LogInformation("Job {JobId} complete. Valid: {ValidCount}, Invalid: {InvalidCount} (InstanceId: {InstanceId}).",
-            job.JobId, jobComplete.ValidCount, jobComplete.InvalidCount, context.InstanceId);
+        await context.CallActivityAsync(nameof(SendJobCompleteActivity), message);
+        logger.LogInformation("Job complete (valid: {ValidCount}, invalid: {InvalidCount})", message.ValidCount, message.InvalidCount);
     }
 }
