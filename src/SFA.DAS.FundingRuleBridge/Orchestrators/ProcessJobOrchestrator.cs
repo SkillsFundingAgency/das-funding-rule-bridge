@@ -24,16 +24,31 @@ public class ProcessJobOrchestrator
         using (logger.BeginScope(properties))
         {
             logger.LogInformation("Processing job for UkPrn {UkPrn}", job.KeyValuePairs.Ukprn);
-            var fileRef = new IlrFileReference
+            var ranToCompletion = false;
+            ValidationSummary[] results = [];
+            
+            try
             {
-                Container = job.KeyValuePairs.Container,
-                Filename = job.KeyValuePairs.Filename
-            };
+                var fileRef = new IlrFileReference
+                {
+                    Container = job.KeyValuePairs.Container,
+                    Filename = job.KeyValuePairs.Filename,
+                    ValidLearnRefNumbers = job.KeyValuePairs.ValidLearnRefNumbers,
+                };
 
-            var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), fileRef);
-            var results = await RunValidation(context, job, learners, logger);
-            await WriteJobFiles(context, job, results);
-            await CompleteJob(context, job, results, logger);    
+                var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), fileRef);
+                results = await RunValidation(context, job, learners, logger);
+                await WriteJobFiles(context, job, results);
+                ranToCompletion = true;
+            }
+            catch (TaskFailedException e)
+            {
+                logger.LogError(e, "Job failed");
+            }
+            finally
+            {
+                await CompleteJob(context, ranToCompletion, job, results, logger);
+            }
         }
     }
 
@@ -81,8 +96,11 @@ public class ProcessJobOrchestrator
         await context.CallActivityAsync(nameof(WriteJobsResultsActivity), writeSummaryRequest);
     }
 
-    private static async Task CompleteJob(TaskOrchestrationContext context, ProcessJobMessage job, ValidationSummary[] results, ILogger logger)
+    private static async Task CompleteJob(TaskOrchestrationContext context, bool ranToCompletion, ProcessJobMessage job, ValidationSummary[] results, ILogger logger)
     {
+        // TODO: this probably isn't the format of the message to return
+        // ranToCompletion indicates there were errors we couldn't handle therefore the whole job should flagged as failed
+        
         var message = new JobCompleteMessage
         {
             JobId = job.JobId,
