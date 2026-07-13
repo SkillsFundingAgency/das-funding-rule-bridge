@@ -27,7 +27,7 @@
             }
           },
           {
-            "Name": "process-job",
+            "Name": "ASValidation",
             "Properties": {
               "DeadLetteringOnMessageExpiration": true,
               "DefaultMessageTimeToLive": "PT1H",
@@ -38,7 +38,7 @@
             }
           },
           {
-            "Name": "job-complete",
+            "Name": "jobstatusqueue",
             "Properties": {
               "DeadLetteringOnMessageExpiration": true,
               "DefaultMessageTimeToLive": "PT1H",
