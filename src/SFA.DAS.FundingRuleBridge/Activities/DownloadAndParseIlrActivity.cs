@@ -70,14 +70,14 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
         return learners;
     }
 
-    private static bool IsValidShortCourse(MessageLearnerLearningDelivery delivery)
+    private static bool IsValidShortCourse(MessageLearnerLearningDelivery learningDelivery)
     {
-        return delivery is { FundModel: 99, ProgType: 34 };
+        return learningDelivery is { FundModel: FundingModel.NonFunded, ProgType: ProgrammeType.GrowthAndSkillsOfferApprenticeshipUnits };
     }
 
     private static bool IsValidApprenticeship(MessageLearnerLearningDelivery learningDelivery)
     {
-        return learningDelivery is { FundModel: 36, ProgType: 25 };
+        return learningDelivery is { FundModel: FundingModel.Apprenticeships, ProgType: ProgrammeType.ApprenticeshipStandard };
     }
 
     private async Task<HashSet<string>> FetchValidLearnerRefsAsync(BlobContainerClient containerClient, IlrFileReference fileRef, CancellationToken cancellationToken = default)
