@@ -67,7 +67,7 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
 
     private static bool IsValidShortCourse(MessageLearnerLearningDelivery delivery)
     {
-        return delivery is { FundModel: 99 } && delivery.LearnAimRef.StartsWith("ZSC00", StringComparison.OrdinalIgnoreCase);
+        return delivery is { FundModel: 99, ProgType: 34 };
     }
 
     private static bool IsValidApprenticeship(MessageLearnerLearningDelivery learningDelivery)
