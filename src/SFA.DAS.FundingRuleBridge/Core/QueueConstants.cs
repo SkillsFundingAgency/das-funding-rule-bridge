@@ -2,7 +2,7 @@
 
 public static class QueueConstants
 {
-    public const string IncomingJobQueue = "ASValidation";
+    public const string IncomingJobQueue = "ASFundingValidation";
     public const string OutgoingJobQueue = "jobstatusqueue";
     public const string ValidationRequestsQueue = "validate-learner-requests";
     public const string ValidationCallbackQueue = "validate-learner-callback";
