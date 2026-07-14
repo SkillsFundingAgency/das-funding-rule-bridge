@@ -27,7 +27,7 @@
             }
           },
           {
-            "Name": "ASValidation",
+            "Name": "ASFundingValidation",
             "Properties": {
               "DeadLetteringOnMessageExpiration": true,
               "DefaultMessageTimeToLive": "PT1H",
