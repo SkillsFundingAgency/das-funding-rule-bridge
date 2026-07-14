@@ -4,7 +4,7 @@
         "AzureFunctionsJobHost:Logging:LogLevel:Host": "Information",
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
         "ConfigurationStorageConnectionString": "UseDevelopmentStorage=true;",
-        "ConfigNames": "SFA.DAS.FundingRuleBridge.Jobs",
+        "ConfigNames": "SFA.DAS.Funding.Rule.Bridge",
         "EnvironmentName": "LOCAL",
         "ResourceEnvironmentName": "LOCAL",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
