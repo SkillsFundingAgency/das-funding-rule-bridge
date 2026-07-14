@@ -33,7 +33,6 @@ public class ProcessJobOrchestrator
                 {
                     Container = job.KeyValuePairs.Container,
                     Filename = job.KeyValuePairs.Filename,
-                    ValidLearnRefNumbers = job.KeyValuePairs.ValidLearnRefNumbers,
                 };
 
                 var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), fileRef);

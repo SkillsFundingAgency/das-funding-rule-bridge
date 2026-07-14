@@ -20,19 +20,10 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
         logger.LogInformation("Downloading ILR file '{Filename}' from container '{Container}'.", fileRef.Filename, fileRef.Container);
         var containerClient = blobServiceClient.GetBlobContainerClient(fileRef.Container);
         
-        // TODO: waiting for confirmation that this part is required
-        // var validLearners = await FetchValidLearnerRefsAsync(containerClient, fileRef, context.CancellationToken);
-        // if (validLearners is not { Count: > 0 })
-        // {
-        //     logger.LogWarning("No valid learners found");
-        //     return [];
-        // }
-        
-        //return await FetchLearnersAsync(containerClient, fileRef, validLearners, context.CancellationToken);
-        return await FetchLearnersAsync(containerClient, fileRef, [], context.CancellationToken);
+        return await FetchLearnersAsync(containerClient, fileRef, context.CancellationToken);
     }
 
-    private async Task<List<LearnerSummary>> FetchLearnersAsync(BlobContainerClient containerClient, IlrFileReference fileRef, HashSet<string> validLearnerRefs, CancellationToken cancellationToken = default)
+    private async Task<List<LearnerSummary>> FetchLearnersAsync(BlobContainerClient containerClient, IlrFileReference fileRef, CancellationToken cancellationToken = default)
     {
         var blobClient = containerClient.GetBlobClient(fileRef.Filename);
         if (!await blobClient.ExistsAsync(cancellationToken))
@@ -45,7 +36,6 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
         var message = (Message)Serializer.Deserialize(stream)!;
 
         var learners = (message.Learner ?? [])
-            // .Where(l => !string.IsNullOrEmpty(l.LearnRefNumber) && validLearnerRefs.Contains(l.LearnRefNumber))
             .Where(l => !string.IsNullOrEmpty(l.LearnRefNumber))
             .Select(l =>
             {
@@ -78,19 +68,6 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
     private static bool IsValidApprenticeship(MessageLearnerLearningDelivery learningDelivery)
     {
         return learningDelivery is { FundModel: FundingModel.Apprenticeships, ProgType: ProgrammeType.ApprenticeshipStandard };
-    }
-
-    private async Task<HashSet<string>> FetchValidLearnerRefsAsync(BlobContainerClient containerClient, IlrFileReference fileRef, CancellationToken cancellationToken = default)
-    {
-        var blobClient = containerClient.GetBlobClient(fileRef.Filename);
-        if (!await blobClient.ExistsAsync(cancellationToken))
-        {
-            logger.LogError("Could not find ValidLearnRefNumbers file, location: {Container}/{Filename}", fileRef.Container, fileRef.Filename);
-            return [];
-        }
-        
-        await using var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false), cancellationToken);
-        return (Serializer.Deserialize(stream) as List<string> ?? []).ToHashSet();
     }
 
     private static Course BuildCourse(MessageLearnerLearningDelivery delivery, DateOnly dob)
