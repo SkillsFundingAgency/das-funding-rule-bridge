@@ -26,7 +26,8 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
     private async Task<List<LearnerSummary>> FetchLearnersAsync(BlobContainerClient containerClient, IlrFileReference fileRef, CancellationToken cancellationToken = default)
     {
         var blobClient = containerClient.GetBlobClient(fileRef.Filename);
-        if (!await blobClient.ExistsAsync(cancellationToken))
+        var exists = await blobClient.ExistsAsync(cancellationToken);
+        if (!exists.Value)
         {
             logger.LogError("ILR file not found in container: {Container}/{Filename}", fileRef.Container, fileRef.Filename);
             throw new FileNotFoundException($"ILR file not found in container: {fileRef.Container}/{fileRef.Filename}");

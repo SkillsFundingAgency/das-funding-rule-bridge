@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FluentAssertions;
@@ -37,9 +38,12 @@ public class DownloadAndParseIlrActivityTests
     }
 
     [Test]
-    public async Task Run_ReturnsAllLearners()
+    public async Task Run_Returns_QualifyingLearners()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
@@ -48,17 +52,17 @@ public class DownloadAndParseIlrActivityTests
 
         var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
 
-        result.Should().HaveCount(9);
-        result.Select(l => l.LearnRefNumber).Should().BeEquivalentTo([
-            "9000004402", "9000009803", "9000567903", "9000568004",
-            "9001019004", "9001019101", "9001019209", "9001019306", "DEVCONTRA1"
-        ]);
+        result.Should().HaveCount(3);
+        result.Select(l => l.LearnRefNumber).Should().BeEquivalentTo("9000004402", "9000009803", "9000567903");
     }
 
     [Test]
     public async Task Run_ParsesDateOfBirthCorrectly()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
@@ -74,7 +78,10 @@ public class DownloadAndParseIlrActivityTests
     [Test]
     public async Task Run_ParsesCoursesForEachLearner()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
@@ -107,7 +114,10 @@ public class DownloadAndParseIlrActivityTests
     [Test]
     public async Task Run_MapsCompStatusToLearnerCourseStatus()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
@@ -128,7 +138,10 @@ public class DownloadAndParseIlrActivityTests
     [Test]
     public async Task Run_UsesActualEndDate_WhenPresent()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
@@ -145,7 +158,10 @@ public class DownloadAndParseIlrActivityTests
     [Test]
     public async Task Run_FallsBackToPlannedEndDate_WhenNoActualEndDate()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
@@ -170,6 +186,9 @@ public class DownloadAndParseIlrActivityTests
             """;
 
         using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(emptyIlr));
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
