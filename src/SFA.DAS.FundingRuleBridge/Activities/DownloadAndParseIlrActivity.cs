@@ -68,7 +68,8 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
 
     private static bool IsValidApprenticeship(MessageLearnerLearningDelivery learningDelivery)
     {
-        return learningDelivery is { FundModel: FundingModel.Apprenticeships, ProgType: ProgrammeType.ApprenticeshipStandard };
+        return learningDelivery is { FundModel: FundingModel.Apprenticeships, ProgType: ProgrammeType.ApprenticeshipStandard, }
+               || (learningDelivery.LearningDeliveryFAM?.Any(x => x.LearnDelFAMType == "RES") ?? false);
     }
 
     private static Course BuildCourse(MessageLearnerLearningDelivery delivery, DateOnly dob)
