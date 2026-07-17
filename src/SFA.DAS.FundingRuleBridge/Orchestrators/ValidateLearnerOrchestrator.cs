@@ -13,23 +13,21 @@ public class ValidateLearnerOrchestrator
     {
         var input = context.GetInput<ValidateLearnerMessage>()!;
 
-        var request = new ValidationRequestMessage
-        {
-            LearnerId = input.LearnerId,
-            OrchestrationInstanceId = context.InstanceId
-        };
+        var request = new ValidationRequestMessage(
+            input.Ukprn,
+            input.Uln,
+            input.Courses,
+            input.CorrelationId
+        );
 
         await context.CallActivityAsync(nameof(SendValidationRequestActivity), request);
 
         var callback = await context.WaitForExternalEvent<ValidationCallbackMessage>("ValidationComplete");
 
-        var result = new FundingRuleValidationResultMessage
+        return new FundingRuleValidationResultMessage
         {
-            LearnerId = callback.LearnerId
+            LearnRefNumber = callback.LearnRefNumber,
+            IsValid = callback.IsValid
         };
-
-        await context.CallActivityAsync(nameof(SendValidationResultActivity), result);
-
-        return result;
     }
 }

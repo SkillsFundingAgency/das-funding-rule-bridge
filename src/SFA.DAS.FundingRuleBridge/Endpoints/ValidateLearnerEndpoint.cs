@@ -1,5 +1,6 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
@@ -20,8 +21,9 @@ public class ValidateLearnerEndpoint(ILogger<ValidateLearnerEndpoint> logger)
             ?? throw new InvalidOperationException("Failed to deserialise ValidateLearnerMessage.");
 
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
-            nameof(ValidateLearnerOrchestrator), input);
+            nameof(ValidateLearnerOrchestrator), input, new StartOrchestrationOptions { InstanceId = input.CorrelationId });
 
-        logger.LogInformation("Started orchestration '{InstanceId}' for learner '{LearnerId}'.", instanceId, input.LearnerId);
+        logger.LogInformation("Started orchestration '{InstanceId}' for job {JobId} (CorrelationId: {CorrelationId}).",
+            instanceId, input.JobId, message.CorrelationId);
     }
 }

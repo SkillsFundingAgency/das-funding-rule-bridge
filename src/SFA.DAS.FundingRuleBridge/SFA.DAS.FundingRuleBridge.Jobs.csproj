@@ -11,6 +11,8 @@
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App"/>
         <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
+        <PackageReference Include="ESFA.DC.ILR.2526.Constants" Version="0.2.1" />
+        <PackageReference Include="ESFA.DC.ILR.2526.Model" Version="0.2.1" />
         <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="3.1.2" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.52.0"/>
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.16.5" />

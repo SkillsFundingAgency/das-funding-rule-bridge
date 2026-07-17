@@ -1,0 +1,36 @@
+services:
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    ports:
+      - "10000:10000"  # blob
+      - "10001:10001"  # queue
+      - "10002:10002"  # table
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+
+  sqledge:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Dev@local123!"
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "Dev@local123!" -Q "SELECT 1" -b
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  servicebus-emulator:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Dev@local123!"
+      SQL_SERVER: sqledge
+      CONFIG_PATH: /ServiceBus_Emulator/ConfigFiles/config.json
+    ports:
+      - "5300:5300"
+    volumes:
+      - ./config.json:/ServiceBus_Emulator/ConfigFiles/config.json
+    depends_on:
+      sqledge:
+        condition: service_healthy
