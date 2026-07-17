@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Xml.Serialization;
+using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using ESFA.DC.ILR.Model;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
@@ -52,7 +53,7 @@ public static class HostBuilderExtensions
             services.AddKeyedSingleton(
                 typeof(ServiceBusClient),
                 QueueConstants.InternalBusKey,
-                (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.InternalServiceBusConnectionString]));
+                (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.InternalServiceBusConnectionString], new DefaultAzureCredential()));
             
             services.AddSingleton<IIlrBlobStorageClient>(sp => new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
             services.AddSingleton<XmlSerializer>(_ => new XmlSerializer(typeof(Message), "ESFA/ILR/2025-26"));
