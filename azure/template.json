@@ -98,7 +98,7 @@
         "functionAppName": "[concat(variables('resourceNamePrefix'), '-fa')]",
         "appServicePlanName": "[concat(variables('resourceNamePrefix'), '-asp')]",
         "privateLinkScopeName": "[toLower(concat('das-', parameters('resourceEnvironmentName'),'-shared-ampls'))]",
-        "configNames": "SFA.DAS.Funding.Rule.Bridge",
+        "configNames": "SFA.DAS.FundingRuleBridge.Jobs",
         "routeTableId": {
             "id": "[resourceId(subscription().subscriptionId, parameters('sharedEnvResourceGroup'), 'Microsoft.Network/routeTables', parameters('SharedRouteTableName'))]"
         },
