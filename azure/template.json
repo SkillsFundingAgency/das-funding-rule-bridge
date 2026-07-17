@@ -83,6 +83,12 @@
         "SharedRouteTableName": {
             "type": "string",
             "defaultValue": ""
+        },
+        "sharedServiceBusName": {
+            "type": "string"
+        },
+        "SharedServiceBusFqdn": {
+            "type": "string"
         }
     },
     "variables": {
@@ -295,6 +301,10 @@
                                 {
                                     "name": "WEBSITE_RUN_FROM_PACKAGE",
                                     "value": "1"
+                                },
+                                {
+                                    "name": "ServiceBusConnection",
+                                    "value": "[parameters('sharedServiceBusFqdn')]"
                                 }
                             ]
                         }
@@ -326,6 +336,33 @@
                 "parameters": {
                     "functionAppName": {
                         "value": "[variables('functionAppName')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('functionAppName'), '-', parameters('utcValue'))]"
+            ]
+        },
+        {
+            "apiVersion": "2020-06-01",
+            "name": "[concat(variables('functionAppName'), '-role-assignment-', parameters('utcValue'))]",
+            "type": "Microsoft.Resources/deployments",
+            "resourceGroup": "[parameters('sharedEnvResourceGroup')]",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[concat(variables('deploymentUrlBase'),'role-assignments/role-assignment-service-bus.json')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "principalId": {
+                        "value": "[reference(concat(variables('functionAppName'), '-', parameters('utcValue'))).outputs.managedServiceIdentityId.value]"
+                    },
+                    "assignmentType": {
+                        "value": "ServiceBusOwner"
+                    },
+                    "resourceName": {
+                        "value": "[parameters('sharedServiceBusName')]"
                     }
                 }
             },

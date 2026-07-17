@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Azure.Storage.Blobs;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
@@ -51,7 +52,7 @@ public static class HostBuilderExtensions
             services.AddKeyedSingleton(
                 typeof(ServiceBusClient),
                 QueueConstants.InternalBusKey,
-                (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.InternalServiceBusConnectionString]));
+                (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.InternalServiceBusConnectionString], new DefaultAzureCredential()));
             
             services.AddSingleton<IIlrBlobStorageClient>(sp => new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
             return builder;
