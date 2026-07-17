@@ -46,15 +46,19 @@ public class ValidateLearnerOrchestrator
                     })
                     .ToList();
 
-                var isValid = validationResult.RuleOutcomes.All(x => x.Outcome == RuleOutcome.Success);
-                return new ValidationSummary(isValid, failed);
+                return new ValidationSummary(request.Uln, validationResult.Status, failed);
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
-                // timeout occured
-                logger.LogError("Timed out waiting for validation result, marking as invalid");
-                return new ValidationSummary(false, []);
+                logger.LogError(ex, "Timed out waiting for validation result, marking as invalid");
             }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unhandled exception occured, marking as invalid");
+            }
+            
+            // system failure
+            return new ValidationSummary(request.Uln, ValidationStatus.SystemError, []);
         }
     }
 

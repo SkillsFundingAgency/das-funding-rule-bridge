@@ -24,34 +24,40 @@ public class ProcessJobOrchestrator
         using (logger.BeginScope(properties))
         {
             logger.LogInformation("Processing job for UkPrn {UkPrn}", job.KeyValuePairs.Ukprn);
-            var ranToCompletion = false;
-            ValidationSummary[] results = [];
+            var jobInfo = new JobInfo
+            {
+                JobId = job.JobId,
+                Ukprn = job.KeyValuePairs.Ukprn,
+                Container = job.KeyValuePairs.Container,
+                ValidIlrXmlFilename = job.KeyValuePairs.Filename,
+                InvalidLearnerRefsFilename = job.KeyValuePairs.InvalidLearnRefNumbers,
+            };
             
             try
             {
-                var fileRef = new IlrFileReference
-                {
-                    Container = job.KeyValuePairs.Container,
-                    Filename = job.KeyValuePairs.Filename,
-                };
+                var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), jobInfo);
+                JobSummary jobSummary = await RunValidationAsync(context, job, learners, logger);
 
-                var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), fileRef);
-                results = await RunValidation(context, job, learners, logger);
-                await WriteJobFiles(context, job, results);
-                ranToCompletion = true;
+                if (jobSummary.JobFailure)
+                {
+                    logger.LogCritical("Job failed");
+                    await SendJobFailedMessageAsync(context, job, logger);    
+                }
+                else
+                {
+                    await WriteJobFilesAsync(context, jobInfo, jobSummary);
+                    await CompleteJob(context, jobInfo, jobSummary, logger);
+                } 
             }
-            catch (TaskFailedException e)
+            catch (Exception ex)
             {
-                logger.LogError(e, "Job failed");
-            }
-            finally
-            {
-                await CompleteJob(context, ranToCompletion, job, results, logger);
+                logger.LogCritical(ex, "Job failed");
+                await SendJobFailedMessageAsync(context, job, logger);
             }
         }
     }
 
-    private static async Task<ValidationSummary[]> RunValidation(TaskOrchestrationContext context, ProcessJobMessage job, List<LearnerSummary> learners, ILogger logger)
+    private static async Task<JobSummary> RunValidationAsync(TaskOrchestrationContext context, ProcessJobMessage job, List<LearnerSummary> learners, ILogger logger)
     {
         logger.LogInformation("Fan out started");
         var subOrchestrations = learners.Select(learner =>
@@ -69,47 +75,62 @@ public class ProcessJobOrchestrator
                     Filename = job.KeyValuePairs.Filename
                 }));
 
-        // all learners are validated regardless of individual pass/fail outcomes;
-        // only an infrastructure exception will cause Task.WhenAll to throw
         var results = await Task.WhenAll(subOrchestrations);
         logger.LogInformation("Fan in complete");
-        
-        return results;
+
+        var items = results.ToList();
+        var failedValidation = items.Where(x => x.Status == ValidationStatus.Failed).ToList();
+        return new JobSummary
+        {
+            JobFailure = items.Any(x => x.Status == ValidationStatus.SystemError),
+            Items = items,
+            InvalidLearnerRefs = failedValidation.Select(x => x.Uln).Distinct().ToList(),
+        };
     }
 
-    private static async Task WriteJobFiles(TaskOrchestrationContext context, ProcessJobMessage job, ValidationSummary[] results)
+    private static async Task WriteJobFilesAsync(TaskOrchestrationContext context, JobInfo jobInfo, JobSummary jobSummary)
     {
-        if (results.All(x => x.IsValid))
+        if (jobSummary.JobFailure || jobSummary.InvalidLearnerRefs is not { Count: > 0 })
         {
             // nothing to write
             return;
         }
-
+        
         var writeSummaryRequest = new WriteJobResultsRequest
         {
-            JobId = job.JobId,
-            ContainerName = job.KeyValuePairs.Container,
-            Path = Path.GetDirectoryName(job.KeyValuePairs.Filename) ?? string.Empty,
-            ValidationErrors = results.SelectMany(x => x.ValidationErrors).ToList()
+            Job = jobInfo,
+            ValidationErrors = jobSummary.Items.SelectMany(x => x.ValidationErrors).ToList(),
+            InvalidLearnerRefs = jobSummary.InvalidLearnerRefs,
         };
         await context.CallActivityAsync(nameof(WriteJobsResultsActivity), writeSummaryRequest);
     }
 
-    private static async Task CompleteJob(TaskOrchestrationContext context, bool ranToCompletion, ProcessJobMessage job, ValidationSummary[] results, ILogger logger)
+    private static async Task CompleteJob(TaskOrchestrationContext context, JobInfo jobInfo, JobSummary jobSummary, ILogger logger)
     {
         // TODO: this probably isn't the format of the message to return
-        // ranToCompletion indicates there were errors we couldn't handle therefore the whole job should flagged as failed
-        
+
         var message = new JobCompleteMessage
         {
-            JobId = job.JobId,
-            Ukprn = job.KeyValuePairs.Ukprn,
-            TotalLearners = results.Length,
-            ValidCount = results.Count(x => x.IsValid),
-            InvalidCount = results.Count(x => !x.IsValid)
+            JobId = jobInfo.JobId,
+            Ukprn = jobInfo.Ukprn,
+            TotalLearners = jobSummary.Items.Count,
+            ValidCount = jobSummary.Items.Count(x => x.Status == ValidationStatus.Passed),
+            InvalidCount = jobSummary.InvalidLearnerRefs.Count,
         };
 
         await context.CallActivityAsync(nameof(SendJobCompleteActivity), message);
         logger.LogInformation("Job complete (valid: {ValidCount}, invalid: {InvalidCount})", message.ValidCount, message.InvalidCount);
+    }
+    
+    private static async Task SendJobFailedMessageAsync(TaskOrchestrationContext context, ProcessJobMessage job, ILogger logger)
+    {
+        var message = new JobCompleteMessage
+        {
+            JobId = job.JobId,
+            Ukprn = job.KeyValuePairs.Ukprn,
+        };
+
+        await context.CallActivityAsync(nameof(SendJobCompleteActivity), message);
+        logger.LogInformation("Sent job failed message");
     }
 }

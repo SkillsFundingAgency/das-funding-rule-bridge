@@ -6,5 +6,6 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Domain;
 public enum ValidationStatus
 {
     Passed,
-    Failed
+    Failed,
+    SystemError
 }

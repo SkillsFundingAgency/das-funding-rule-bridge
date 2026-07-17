@@ -10,31 +10,29 @@ using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Activities;
 
-public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient, ILogger<DownloadAndParseIlrActivity> logger)
+public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient, XmlSerializer xmlSerializer, ILogger<DownloadAndParseIlrActivity> logger)
 {
-    private static readonly XmlSerializer Serializer = new(typeof(Message), "ESFA/ILR/2025-26");
-
     [Function(nameof(DownloadAndParseIlrActivity))]
-    public async Task<List<LearnerSummary>> Run([ActivityTrigger] IlrFileReference fileRef, FunctionContext context)
+    public async Task<List<LearnerSummary>> Run([ActivityTrigger] JobInfo jobInfo, FunctionContext context)
     {
-        logger.LogInformation("Downloading ILR file '{Filename}' from container '{Container}'.", fileRef.Filename, fileRef.Container);
-        var containerClient = blobServiceClient.GetBlobContainerClient(fileRef.Container);
+        var containerClient = blobServiceClient.GetBlobContainerClient(jobInfo.Container);
         
-        return await FetchLearnersAsync(containerClient, fileRef, context.CancellationToken);
+        return await FetchLearnersAsync(containerClient, jobInfo, context.CancellationToken);
     }
 
-    private async Task<List<LearnerSummary>> FetchLearnersAsync(BlobContainerClient containerClient, IlrFileReference fileRef, CancellationToken cancellationToken = default)
+    private async Task<List<LearnerSummary>> FetchLearnersAsync(BlobContainerClient containerClient, JobInfo jobInfo, CancellationToken cancellationToken = default)
     {
-        var blobClient = containerClient.GetBlobClient(fileRef.Filename);
+        logger.LogInformation("Downloading ILR file '{Filename}' from container '{Container}'.", jobInfo.ValidIlrXmlFilename, jobInfo.Container);
+        var blobClient = containerClient.GetBlobClient(jobInfo.ValidIlrXmlFilename);
         var exists = await blobClient.ExistsAsync(cancellationToken);
         if (!exists.Value)
         {
-            logger.LogError("ILR file not found in container: {Container}/{Filename}", fileRef.Container, fileRef.Filename);
-            throw new FileNotFoundException($"ILR file not found in container: {fileRef.Container}/{fileRef.Filename}");
+            logger.LogError("ILR file not found in container: {Container}/{Filename}", jobInfo.Container, jobInfo.ValidIlrXmlFilename);
+            throw new FileNotFoundException($"ILR file not found in container: {jobInfo.Container}/{jobInfo.ValidIlrXmlFilename}");
         }
 
         await using var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false), cancellationToken);
-        var message = (Message)Serializer.Deserialize(stream)!;
+        var message = (Message)xmlSerializer.Deserialize(stream)!;
 
         var learners = (message.Learner ?? [])
             .Where(l => !string.IsNullOrEmpty(l.LearnRefNumber))
@@ -57,7 +55,7 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
             .Where(l => l.Courses is { Count: > 0 })
             .ToList();
 
-        logger.LogInformation("Parsed {Count} learners from '{Filename}'.", learners.Count, fileRef.Filename);
+        logger.LogInformation("Parsed {Count} learners from '{Filename}'.", learners.Count, jobInfo.ValidIlrXmlFilename);
         return learners;
     }
 

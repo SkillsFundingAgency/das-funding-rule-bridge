@@ -1,11 +1,14 @@
+using System.Xml.Serialization;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using ESFA.DC.ILR.Model;
 using FluentAssertions;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using SFA.DAS.FundingRuleBridge.Jobs.Activities;
+using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 
@@ -14,12 +17,20 @@ namespace SFA.DAS.FundingRuleBridge.UnitTests.Activities;
 [TestFixture]
 public class DownloadAndParseIlrActivityTests
 {
-    private const string Container = "ilr2526-files";
-    private const string Filename = "10034309/sample.xml";
+    private readonly JobInfo _jobInfo = new()
+    {
+        JobId = 777,
+        Ukprn = "10034309",
+        Container = "ilr2526-files",
+        ValidIlrXmlFilename = "10034309/sample.xml",
+        InvalidLearnerRefsFilename = "10034309/invalid-learners.json",
+    };
 
     private Mock<IIlrBlobStorageClient> _blobServiceClient = null!;
     private Mock<BlobContainerClient> _containerClient = null!;
     private Mock<BlobClient> _blobClient = null!;
+
+    private readonly XmlSerializer _xmlSerializer = new(typeof(Message), "ESFA/ILR/2025-26");
 
     [SetUp]
     public void SetUp()
@@ -29,11 +40,11 @@ public class DownloadAndParseIlrActivityTests
         _blobClient = new Mock<BlobClient>();
 
         _blobServiceClient
-            .Setup(s => s.GetBlobContainerClient(Container))
+            .Setup(s => s.GetBlobContainerClient(_jobInfo.Container))
             .Returns(_containerClient.Object);
 
         _containerClient
-            .Setup(c => c.GetBlobClient(Filename))
+            .Setup(c => c.GetBlobClient(_jobInfo.ValidIlrXmlFilename))
             .Returns(_blobClient.Object);
     }
 
@@ -48,9 +59,9 @@ public class DownloadAndParseIlrActivityTests
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         result.Should().HaveCount(3);
         result.Select(l => l.LearnRefNumber).Should().BeEquivalentTo("9000004402", "9000009803", "9000567903");
@@ -67,9 +78,9 @@ public class DownloadAndParseIlrActivityTests
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         result.First(l => l.LearnRefNumber == "9000004402").DateOfBirth
             .Should().Be(new DateOnly(2000, 1, 2));
@@ -86,9 +97,9 @@ public class DownloadAndParseIlrActivityTests
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         var firstLearner = result.First(l => l.LearnRefNumber == "9000004402");
         firstLearner.Courses.Should().HaveCount(3);
@@ -122,9 +133,9 @@ public class DownloadAndParseIlrActivityTests
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         // 9000009803 has CompStatus=3 (Withdrawn)
         result.First(l => l.LearnRefNumber == "9000009803")
@@ -146,9 +157,9 @@ public class DownloadAndParseIlrActivityTests
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         // 9000567903 first delivery has LearnActEndDate=2025-08-06, PlannedEndDate=2025-06-19
         result.First(l => l.LearnRefNumber == "9000567903")
@@ -166,9 +177,9 @@ public class DownloadAndParseIlrActivityTests
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         // 9000004402 first delivery has no LearnActEndDate, PlannedEndDate=2025-09-27
         result.First(l => l.LearnRefNumber == "9000004402")
@@ -193,9 +204,9 @@ public class DownloadAndParseIlrActivityTests
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         result.Should().BeEmpty();
     }

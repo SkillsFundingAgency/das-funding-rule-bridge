@@ -1,11 +1,11 @@
 ﻿using ESFA.DC.ILR.IO.Model.Validation;
+using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Messages;
 
 public class WriteJobResultsRequest
 {
-    public long JobId { get; set; }
-    public required string ContainerName { get; set; }
-    public required string Path { get; set; }
+    public required JobInfo Job { get; set; }
+    public List<string> InvalidLearnerRefs { get; set; } = [];
     public required List<ValidationError> ValidationErrors { get; set; }
 }

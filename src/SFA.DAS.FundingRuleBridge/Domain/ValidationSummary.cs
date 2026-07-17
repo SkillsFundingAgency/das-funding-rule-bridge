@@ -2,4 +2,4 @@
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Domain;
 
-public record ValidationSummary(bool IsValid, List<ValidationError> ValidationErrors);
+public record ValidationSummary(string Uln, ValidationStatus Status, List<ValidationError> ValidationErrors);

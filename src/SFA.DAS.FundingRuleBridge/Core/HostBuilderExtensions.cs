@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Xml.Serialization;
 using Azure.Messaging.ServiceBus;
-using Azure.Storage.Blobs;
+using ESFA.DC.ILR.Model;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
@@ -54,6 +55,7 @@ public static class HostBuilderExtensions
                 (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.InternalServiceBusConnectionString]));
             
             services.AddSingleton<IIlrBlobStorageClient>(sp => new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
+            services.AddSingleton<XmlSerializer>(_ => new XmlSerializer(typeof(Message), "ESFA/ILR/2025-26"));
             return builder;
         }
     }
