@@ -2,7 +2,6 @@
 using System.Xml.Serialization;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using ESFA.DC.ILR.IO.Model.Validation;
 using ESFA.DC.ILR.Model;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
@@ -15,47 +14,25 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Activities;
 public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceClient, XmlSerializer xmlSerializer, ILogger<WriteJobsResultsActivity> logger)
 {
     private const string ValidationErrorsFilename = "ASValidationErrors.json";
+    private const string InvalidLearnersFilename = "ASInvalidLearnRefNumbers.json";
+    private const string ErrorLookupsFilename = "ASValidationErrorLookups.json";
     
     [Function(nameof(WriteJobsResultsActivity))]
     public async Task Run([ActivityTrigger] WriteJobResultsRequest request, FunctionContext context)
     {
+        if (request.InvalidLearnerRefs is not { Count: > 0 })
+        {
+            return;
+        }
+        
         var client = blobServiceClient.GetBlobContainerClient(request.Job.Container);
-        await WriteValidationErrorsAsync(client, request.Job, request.ValidationErrors, context.CancellationToken);
-        await AppendInvalidLearnerRefsAsync(client, request.Job, request.InvalidLearnerRefs, context.CancellationToken);
-        await WriteValidIlrAsync(client, request.Job, request.InvalidLearnerRefs, context.CancellationToken);
+        await WriteJsonFile(client, request.Job.GetJobPath(ValidationErrorsFilename), request.ValidationErrors, context.CancellationToken);
+        await WriteJsonFile(client, request.Job.GetJobPath(InvalidLearnersFilename), request.InvalidLearnerRefs, context.CancellationToken);
+        await UpdateIlrAsync(client, request.Job, request.InvalidLearnerRefs, context.CancellationToken);
     }
 
-    private async Task AppendInvalidLearnerRefsAsync(BlobContainerClient client, JobInfo jobInfo, List<string> invalidLearnerRefs, CancellationToken cancellationToken)
+    private async Task UpdateIlrAsync(BlobContainerClient client, JobInfo jobInfo, List<string> invalidLearnerRefs, CancellationToken cancellationToken)
     {
-        if (invalidLearnerRefs is not { Count: > 0 })
-        {
-            return;
-        }
-
-        List<string> learnerRefs;
-        var blobClient = client.GetBlobClient(jobInfo.InvalidLearnerRefsFilename);
-        await using (var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false), cancellationToken))
-        {
-            var reader = new StreamReader(stream);
-            learnerRefs = JsonSerializer.Deserialize<List<string>>(await reader.ReadToEndAsync(cancellationToken)) ?? [];
-        }
-        
-        learnerRefs.AddRange(invalidLearnerRefs);
-        learnerRefs = learnerRefs.Distinct().ToList();
-        
-        // uploading with the original filename overwrites
-        await using var sw = new StringWriter();
-        var payload = BinaryData.FromString(JsonSerializer.Serialize(learnerRefs));
-        await client.UploadBlobAsync(jobInfo.ValidIlrXmlFilename, payload, cancellationToken);
-    }
-
-    private async Task WriteValidIlrAsync(BlobContainerClient client, JobInfo jobInfo, List<string> invalidLearnerRefs, CancellationToken cancellationToken)
-    {
-        if (invalidLearnerRefs is not { Count: > 0 })
-        {
-            return;
-        }
-            
         var ids = invalidLearnerRefs.ToHashSet();
         var blobClient = client.GetBlobClient(jobInfo.ValidIlrXmlFilename);
 
@@ -66,29 +43,24 @@ public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceC
         }
         
         // filter out the learners who failed validation
-        message.Learner = message.Learner.Where(x => !ids.Contains(x.LearnRefNumber)).ToArray();
+        message.Learner = message.Learner.ExceptBy(ids, x => x.LearnRefNumber).ToArray();
         
         // TODO: do we have to do anything with message.SourceFiles?
         
-        // uploading with the original filename overwrites
         await using var sw = new StringWriter();
         xmlSerializer.Serialize(sw, message);
         await client.UploadBlobAsync(jobInfo.ValidIlrXmlFilename, BinaryData.FromString(sw.ToString()), cancellationToken);
+        LogFileUpload(jobInfo.ValidIlrXmlFilename);
     }
 
-    private async Task WriteValidationErrorsAsync(BlobContainerClient client, JobInfo jobInfo, List<ValidationError> validationErrors, CancellationToken cancellationToken = default)
+    private async Task WriteJsonFile<T>(BlobContainerClient client, string filename, T content, CancellationToken cancellationToken = default)
     {
-        if (validationErrors is not { Count: > 0 })
-        {
-            return;
-        }
-        
-        var filename = jobInfo.GetJobPath(ValidationErrorsFilename);
-        var payload = BinaryData.FromString(JsonSerializer.Serialize(validationErrors));
+        var json = JsonSerializer.Serialize(content);
+        var payload = BinaryData.FromString(json);
         await client.UploadBlobAsync(filename, payload, cancellationToken);
-        LogValidationErrorsWritten(validationErrors.Count, jobInfo.Container, filename);
+        LogFileUpload(filename);
     }
 
-    [LoggerMessage(LogLevel.Information, "Wrote {ValidationErrorCount} validation error records to {ContainerName}/{ValidationErrorsFilename}")]
-    partial void LogValidationErrorsWritten(int validationErrorCount, string containerName, string validationErrorsFilename);
+    [LoggerMessage(LogLevel.Information, "Wrote {Filename}")]
+    partial void LogFileUpload(string filename);
 }
