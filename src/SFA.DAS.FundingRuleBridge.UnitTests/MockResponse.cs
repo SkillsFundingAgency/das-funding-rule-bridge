@@ -2,6 +2,7 @@
 using Azure;
 using Azure.Core;
 
+[assembly: ExcludeFromCodeCoverage]
 namespace SFA.DAS.FundingRuleBridge.UnitTests;
 
 public class MockResponse : Response

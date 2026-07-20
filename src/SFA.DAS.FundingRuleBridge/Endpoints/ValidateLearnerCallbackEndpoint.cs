@@ -16,9 +16,16 @@ public class ValidateLearnerCallbackEndpoint(ILogger<ValidateLearnerCallbackEndp
         [DurableClient] DurableTaskClient durableClient,
         FunctionContext executionContext)
     {
-        var callback = JsonSerializer.Deserialize<ValidateLearnerResult>(message.Body)
-            ?? throw new InvalidOperationException("Failed to deserialise ValidationCallbackMessage.");
-
+        ValidateLearnerResult? callback;
+        try
+        {
+            callback = JsonSerializer.Deserialize<ValidateLearnerResult>(message.Body) ?? throw new Exception();
+        }
+        catch
+        {
+            throw new InvalidOperationException("Failed to deserialise ValidateLearnerResult");
+        }
+        
         await durableClient.RaiseEventAsync(callback.WaitingInstanceId, "ValidationComplete", callback);
 
         logger.LogInformation("Raised ValidationComplete event for orchestration '{InstanceId}' (CorrelationId: {CorrelationId}).",

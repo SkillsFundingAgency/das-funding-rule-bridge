@@ -18,9 +18,16 @@ public class ProcessJobEndpoint(ILogger<ProcessJobEndpoint> logger)
         [DurableClient] DurableTaskClient durableClient,
         FunctionContext executionContext)
     {
-        var job = JsonSerializer.Deserialize<ProcessJobMessage>(message.Body)
-            ?? throw new InvalidOperationException("Failed to deserialise ProcessJobMessage.");
-
+        ProcessJobMessage? job;
+        try
+        {
+            job = JsonSerializer.Deserialize<ProcessJobMessage>(message.Body) ?? throw new Exception();
+        }
+        catch
+        {
+            throw new InvalidOperationException("Failed to deserialise ProcessJobMessage");
+        }
+        
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(ProcessJobOrchestrator), job, new StartOrchestrationOptions { InstanceId = message.CorrelationId });
 

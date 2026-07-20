@@ -78,15 +78,7 @@ public class ProcessJobOrchestrator
         var results = await Task.WhenAll(subOrchestrations);
         logger.LogInformation("Fan in complete");
 
-        var items = results.ToList();
-        var failedValidation = items.Where(x => x.Status == ValidationStatus.Failed).ToList();
-        return new JobSummary
-        {
-            JobFailure = items.Any(x => x.Status == ValidationStatus.SystemError),
-            Items = items,
-            InvalidLearnerRefs = failedValidation.Select(x => x.Uln).Distinct().ToList(),
-            RuleDescriptions = items.SelectMany(x => x.RuleDescriptions).Distinct().ToList(),
-        };
+        return results.ToJobSummary();
     }
 
     private static async Task WriteJobFilesAsync(TaskOrchestrationContext context, JobInfo jobInfo, JobSummary jobSummary)
@@ -110,7 +102,6 @@ public class ProcessJobOrchestrator
     private static async Task CompleteJob(TaskOrchestrationContext context, JobInfo jobInfo, JobSummary jobSummary, ILogger logger)
     {
         // TODO: this probably isn't the format of the message to return
-
         var message = new JobCompleteMessage
         {
             JobId = jobInfo.JobId,
