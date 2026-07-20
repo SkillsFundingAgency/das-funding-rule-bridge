@@ -34,19 +34,23 @@ public class ValidateLearnerOrchestrator
             {
                 var validationResult = await context.WaitForExternalEvent<ValidateLearnerResult>("ValidationComplete", TimeSpan.FromHours(ValidationTimeoutInHours));
                 logger.LogInformation("Received validation result");
-                var failed = validationResult.RuleOutcomes
-                    .Where(x => x.Outcome != RuleOutcome.Success)
-                    .Select(x => new ValidationError
+
+                var failedOutcomes = validationResult.RuleOutcomes.Where(x => x.Outcome != RuleOutcome.Success).ToList();
+                var failed = failedOutcomes.Select(x => new ValidationError
                     {
                         LearnerReferenceNumber = validationResult.Uln,
                         AimSequenceNumber = x.AimSequenceNumber,
                         RuleName = x.RuleName,
-                        Severity = "E",
+                        Severity = x.Outcome == RuleOutcome.Error ? "E" : "W",
                         ValidationErrorParameters = MapValidationErrorParameters(x.FundingRestrictions)
                     })
                     .ToList();
+                var rules = failedOutcomes
+                    .DistinctBy(x => x.RuleName)
+                    .Select(x => new RuleDescriptionLookup(x.RuleName, x.RuleDescription))
+                    .ToList();
 
-                return new ValidationSummary(request.Uln, validationResult.Status, failed);
+                return new ValidationSummary(request.Uln, validationResult.Status, failed, rules);
             }
             catch (TaskCanceledException ex)
             {
@@ -58,7 +62,7 @@ public class ValidateLearnerOrchestrator
             }
             
             // system failure
-            return new ValidationSummary(request.Uln, ValidationStatus.SystemError, []);
+            return new ValidationSummary(request.Uln, ValidationStatus.SystemError, [], []);
         }
     }
 

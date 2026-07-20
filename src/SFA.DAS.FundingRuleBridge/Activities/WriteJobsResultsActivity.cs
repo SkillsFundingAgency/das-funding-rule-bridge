@@ -28,6 +28,7 @@ public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceC
         var client = blobServiceClient.GetBlobContainerClient(request.Job.Container);
         await WriteJsonFile(client, request.Job.GetJobPath(ValidationErrorsFilename), request.ValidationErrors, context.CancellationToken);
         await WriteJsonFile(client, request.Job.GetJobPath(InvalidLearnersFilename), request.InvalidLearnerRefs, context.CancellationToken);
+        await WriteJsonFile(client, request.Job.GetJobPath(ErrorLookupsFilename), request.RuleDescriptions, context.CancellationToken);
         await UpdateIlrAsync(client, request.Job, request.InvalidLearnerRefs, context.CancellationToken);
     }
 
@@ -45,11 +46,10 @@ public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceC
         // filter out the learners who failed validation
         message.Learner = message.Learner.ExceptBy(ids, x => x.LearnRefNumber).ToArray();
         
-        // TODO: do we have to do anything with message.SourceFiles?
-        
         await using var sw = new StringWriter();
         xmlSerializer.Serialize(sw, message);
-        await client.UploadBlobAsync(jobInfo.ValidIlrXmlFilename, BinaryData.FromString(sw.ToString()), cancellationToken);
+        
+        await blobClient.UploadAsync(BinaryData.FromString(sw.ToString()), overwrite: true, cancellationToken);
         LogFileUpload(jobInfo.ValidIlrXmlFilename);
     }
 

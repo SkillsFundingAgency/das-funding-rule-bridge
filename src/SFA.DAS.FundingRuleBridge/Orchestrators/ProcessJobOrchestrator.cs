@@ -85,6 +85,7 @@ public class ProcessJobOrchestrator
             JobFailure = items.Any(x => x.Status == ValidationStatus.SystemError),
             Items = items,
             InvalidLearnerRefs = failedValidation.Select(x => x.Uln).Distinct().ToList(),
+            RuleDescriptions = items.SelectMany(x => x.RuleDescriptions).Distinct().ToList(),
         };
     }
 
@@ -101,6 +102,7 @@ public class ProcessJobOrchestrator
             Job = jobInfo,
             ValidationErrors = jobSummary.Items.SelectMany(x => x.ValidationErrors).ToList(),
             InvalidLearnerRefs = jobSummary.InvalidLearnerRefs,
+            RuleDescriptions = jobSummary.RuleDescriptions,
         };
         await context.CallActivityAsync(nameof(WriteJobsResultsActivity), writeSummaryRequest);
     }
