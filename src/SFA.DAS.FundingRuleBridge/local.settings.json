@@ -1,21 +1,32 @@
 {
-    "IsEncrypted": false,
-    "Values": {
-        "AzureFunctionsJobHost:Logging:LogLevel:Host": "Information",
-        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-        "ConfigurationStorageConnectionString": "UseDevelopmentStorage=true;",
-        "ConfigNames": "SFA.DAS.FundingRuleBridge.Jobs",
-        "EnvironmentName": "LOCAL",
-        "ResourceEnvironmentName": "LOCAL",
-        "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-        "Version": "2.0",
-        "IncomingServiceBusConnection": "Endpoint=sb://localhost:5672;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
-        "ServiceBusConnection": "Endpoint=sb://localhost:5672;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
-        "IlrBlobStorageConnection": "UseDevelopmentStorage=true"
-    },
-    "Host": {
-        "LocalHttpPort": 7008,
-        "CORS": "*",
-        "CORSCredentials": false
+  "IsEncrypted": false,
+  "Values": {
+    "AzureFunctionsJobHost:Logging:LogLevel:Host": "Information",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "ConfigurationStorageConnectionString": "UseDevelopmentStorage=true;",
+    "ConfigNames": "SFA.DAS.FundingRuleBridge.Jobs",
+    "EnvironmentName": "LOCAL",
+    "ResourceEnvironmentName": "LOCAL",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "Version": "2.0",
+    "ServiceBusConnection": "Endpoint=sb://localhost:5672;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
+    "IlrBlobStorageConnection": "UseDevelopmentStorage=true",
+    "IncomingServiceBusConnection": "Endpoint=sb://localhost:5672;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
+    "SLD": {
+      "ServiceBusConnection": "Endpoint=sb://localhost:5672;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
+      "Topic": {
+        "MaxCallbackTimeSpan": "010:00:00",
+        "Name": "ilr2627submissiontopic",
+        "SubscriptionName": "ASFundingValidation",
+        "MaxConcurrentCalls": "1"
+      },
+      "JobStatusQueueName": "jobstatusqueue",
+      "AuditQueueName": "auditingqueue"
     }
+  },
+  "Host": {
+    "LocalHttpPort": 7008,
+    "CORS": "*",
+    "CORSCredentials": false
+  }
 }
