@@ -83,6 +83,12 @@
         "SharedRouteTableName": {
             "type": "string",
             "defaultValue": ""
+        },
+        "sharedServiceBusName": {
+            "type": "string"
+        },
+        "SharedServiceBusFqdn": {
+            "type": "string"
         }
     },
     "variables": {
@@ -92,7 +98,7 @@
         "functionAppName": "[concat(variables('resourceNamePrefix'), '-fa')]",
         "appServicePlanName": "[concat(variables('resourceNamePrefix'), '-asp')]",
         "privateLinkScopeName": "[toLower(concat('das-', parameters('resourceEnvironmentName'),'-shared-ampls'))]",
-        "configNames": "SFA.DAS.Funding.Rule.Bridge",
+        "configNames": "SFA.DAS.FundingRuleBridge.Jobs",
         "routeTableId": {
             "id": "[resourceId(subscription().subscriptionId, parameters('sharedEnvResourceGroup'), 'Microsoft.Network/routeTables', parameters('SharedRouteTableName'))]"
         },
@@ -293,8 +299,16 @@
                                     "value": "dotnet-isolated"
                                 },
                                 {
+                                    "name": "AzureWebJobsServiceBus__fullyQualifiedNamespace",
+                                    "value": "[parameters('SharedServiceBusFqdn')]"
+                                },
+                                {
                                     "name": "WEBSITE_RUN_FROM_PACKAGE",
                                     "value": "1"
+                                },
+                                {
+                                    "name": "ServiceBusConnection",
+                                    "value": "[parameters('sharedServiceBusFqdn')]"
                                 }
                             ]
                         }
@@ -326,6 +340,33 @@
                 "parameters": {
                     "functionAppName": {
                         "value": "[variables('functionAppName')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('functionAppName'), '-', parameters('utcValue'))]"
+            ]
+        },
+        {
+            "apiVersion": "2020-06-01",
+            "name": "[concat(variables('functionAppName'), '-role-assignment-', parameters('utcValue'))]",
+            "type": "Microsoft.Resources/deployments",
+            "resourceGroup": "[parameters('sharedEnvResourceGroup')]",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[concat(variables('deploymentUrlBase'),'role-assignments/role-assignment-service-bus.json')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "principalId": {
+                        "value": "[reference(concat(variables('functionAppName'), '-', parameters('utcValue'))).outputs.managedServiceIdentityId.value]"
+                    },
+                    "assignmentType": {
+                        "value": "ServiceBusOwner"
+                    },
+                    "resourceName": {
+                        "value": "[parameters('sharedServiceBusName')]"
                     }
                 }
             },

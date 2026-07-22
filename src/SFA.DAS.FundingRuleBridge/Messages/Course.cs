@@ -5,6 +5,7 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Messages;
 public record Course
 {
     public required string Id { get; set; }
+    public required int AimSequenceNumber { get; set; }
     public CourseType Type { get; set; }
     public TrainingType TrainingType { get; set; }
     public int? StandardCode { get; set; }

@@ -10,20 +10,21 @@
 
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App"/>
-        <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
+        <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
+        <PackageReference Include="Azure.Identity" Version="1.21.0" />
         <PackageReference Include="ESFA.DC.ILR.2526.Constants" Version="0.2.1" />
         <PackageReference Include="ESFA.DC.ILR.2526.Model" Version="0.2.1" />
         <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="3.1.2" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.52.0"/>
-        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.16.5" />
+        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.18.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.OpenTelemetry" Version="1.2.0"/>
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.3.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
-        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3"/>
-        <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.8.1" />
-        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.5.1" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
+        <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.8.2" />
+        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.24.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs" Version="6.8.1" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.1.0"/>
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.7"/>

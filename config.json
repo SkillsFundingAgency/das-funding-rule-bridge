@@ -5,7 +5,7 @@
         "Name": "sbemulatorns",
         "Queues": [
           {
-            "Name": "validate-learner",
+            "Name": "validate-learner-requests",
             "Properties": {
               "DeadLetteringOnMessageExpiration": true,
               "DefaultMessageTimeToLive": "PT1H",
@@ -27,7 +27,7 @@
             }
           },
           {
-            "Name": "process-job",
+            "Name": "ASFundingValidation",
             "Properties": {
               "DeadLetteringOnMessageExpiration": true,
               "DefaultMessageTimeToLive": "PT1H",
@@ -38,7 +38,7 @@
             }
           },
           {
-            "Name": "job-complete",
+            "Name": "jobstatusqueue",
             "Properties": {
               "DeadLetteringOnMessageExpiration": true,
               "DefaultMessageTimeToLive": "PT1H",
@@ -47,7 +47,7 @@
               "RequiresDuplicateDetection": false,
               "RequiresSession": false
             }
-          },
+          }
         ],
         "Topics": []
       }

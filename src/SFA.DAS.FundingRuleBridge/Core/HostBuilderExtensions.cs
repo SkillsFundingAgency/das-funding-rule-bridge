@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Xml.Serialization;
+using Azure.Identity;
 using Azure.Messaging.ServiceBus;
-using Azure.Storage.Blobs;
+using ESFA.DC.ILR.Model;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
@@ -43,10 +45,18 @@ public static class HostBuilderExtensions
         private FunctionsApplicationBuilder RegisterDependencies()
         {
             var services = builder.Services;
-            services.AddSingleton(sp =>
-                new ServiceBusClient(sp.GetRequiredService<IConfiguration>()["ServiceBusConnection"]));
-            services.AddSingleton<IIlrBlobStorageClient>(sp =>
-                new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
+            services.AddKeyedSingleton(
+                typeof(ServiceBusClient),
+                QueueConstants.ExternalBusKey,
+                (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.ExternalServiceBusConnectionString]));
+            
+            services.AddKeyedSingleton(
+                typeof(ServiceBusClient),
+                QueueConstants.InternalBusKey,
+                (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.InternalServiceBusConnectionString], new DefaultAzureCredential()));
+            
+            services.AddSingleton<IIlrBlobStorageClient>(sp => new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
+            services.AddSingleton<XmlSerializer>(_ => new XmlSerializer(typeof(Message), "ESFA/ILR/2025-26"));
             return builder;
         }
     }

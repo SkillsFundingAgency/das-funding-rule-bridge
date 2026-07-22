@@ -1,4 +1,5 @@
 using Azure.Monitor.OpenTelemetry.Exporter;
+using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Core;
@@ -12,6 +13,7 @@ public static class OpenTelemetryExtensions
             return;
         }
         
+        services.AddOpenTelemetry().UseFunctionsWorkerDefaults();
         services.AddOpenTelemetry().UseAzureMonitorExporter(options => { options.ConnectionString = connectionString; });
     }
 }
