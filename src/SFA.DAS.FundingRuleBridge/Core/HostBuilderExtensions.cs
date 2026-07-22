@@ -111,12 +111,6 @@ public static class HostBuilderExtensions
             builder.Services.AddTransient<ESFA.DC.Queueing.Interface.IQueuePublishService<JobStatusDto>>(sp => new QueuePublishService<JobStatusDto>(jobStatusQueueConfig, sp.GetRequiredService<IJsonSerializationService>()));
             builder.Services.AddTransient<ESFA.DC.Queueing.Interface.IQueuePublishService<AuditingDto>>(sp => new QueuePublishService<AuditingDto>(auditQueueConfig, sp.GetRequiredService<IJsonSerializationService>()));
             builder.Services.AddTransient<IMessageHandler<JobContextMessage>, JobContextMessageHandler>();
-                
-
-
-            builder.Services.AddSingleton(jobStatusQueueConfig);
-            builder.Services.AddSingleton(auditQueueConfig);
-            builder.Services.AddSingleton(sldTopicConfig);
 
             builder.Services.AddHostedService<SLDMessagingService>();
             return builder;
