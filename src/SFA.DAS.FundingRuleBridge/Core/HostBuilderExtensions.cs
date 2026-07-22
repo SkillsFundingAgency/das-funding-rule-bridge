@@ -30,7 +30,8 @@ public static class HostBuilderExtensions
                 .ConfigureFunctionsWebApplication()
                 .RegisterConfiguration()
                 .RegisterServices()
-                .RegisterDependencies();
+                .RegisterDependencies()
+                .RegisterSLDQueueingDependencies();
         }
 
         private FunctionsApplicationBuilder RegisterConfiguration()
@@ -109,7 +110,7 @@ public static class HostBuilderExtensions
                 sp => new DefaultJobContextMessageMapper<JobContextMessage>());
             builder.Services.AddTransient<ESFA.DC.Queueing.Interface.IQueuePublishService<JobStatusDto>>(sp => new QueuePublishService<JobStatusDto>(jobStatusQueueConfig, sp.GetRequiredService<IJsonSerializationService>()));
             builder.Services.AddTransient<ESFA.DC.Queueing.Interface.IQueuePublishService<AuditingDto>>(sp => new QueuePublishService<AuditingDto>(auditQueueConfig, sp.GetRequiredService<IJsonSerializationService>()));
-            builder.Services.AddTransient<IMessageHandler, JobContextMessageHandler>();
+            builder.Services.AddTransient<IMessageHandler<JobContextMessage>, JobContextMessageHandler>();
                 
 
 
