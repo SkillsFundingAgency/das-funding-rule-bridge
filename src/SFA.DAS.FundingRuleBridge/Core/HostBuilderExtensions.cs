@@ -117,6 +117,8 @@ public static class HostBuilderExtensions
             builder.Services.AddSingleton(jobStatusQueueConfig);
             builder.Services.AddSingleton(auditQueueConfig);
             builder.Services.AddSingleton(sldTopicConfig);
+
+            builder.Services.AddHostedService<SLDMessagingService>();
             return builder;
         }
 
