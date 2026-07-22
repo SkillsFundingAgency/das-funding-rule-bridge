@@ -60,10 +60,6 @@ public static class HostBuilderExtensions
         private FunctionsApplicationBuilder RegisterDependencies()
         {
             var services = builder.Services;
-            services.AddKeyedSingleton(
-                typeof(ServiceBusClient),
-                QueueConstants.ExternalBusKey,
-                (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.ExternalServiceBusConnectionString]));
             
             services.AddKeyedSingleton(
                 typeof(ServiceBusClient),
@@ -82,9 +78,9 @@ public static class HostBuilderExtensions
             var t = TimeSpan.Parse(sldConfig["MaxCallbackTimeSpan"] ?? "01:00:00");
 
             var sldTopicConfig = new TopicConfiguration(
-                builder.Configuration["IncomingServiceBusConnection"],
+                builder.Configuration[QueueConstants.ExternalServiceBusConnectionString],
                 sldConfig["TopicName"],
-                sldConfig["SubscriptionName"] ?? "ASFundingValidation",
+                sldConfig["SubscriptionName"] ?? QueueConstants.IncomingJobQueue,
                 int.Parse(sldConfig["MaxConcurrentCalls"] ?? "1"),
                 maximumCallbackTimeSpan: t);
 
