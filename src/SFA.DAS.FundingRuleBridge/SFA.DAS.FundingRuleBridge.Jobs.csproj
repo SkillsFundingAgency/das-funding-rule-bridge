@@ -14,6 +14,10 @@
         <PackageReference Include="Azure.Identity" Version="1.21.0" />
         <PackageReference Include="ESFA.DC.ILR.2526.Constants" Version="0.2.1" />
         <PackageReference Include="ESFA.DC.ILR.2526.Model" Version="0.2.1" />
+        <PackageReference Include="ESFA.DC.JobContextManager" Version="0.4.6" />
+        <PackageReference Include="ESFA.DC.Queueing" Version="0.2.0-beta0001" />
+        <PackageReference Include="ESFA.DC.Serialization.Json" Version="0.2.0" />
+        <PackageReference Include="ESFA.DC.Serialization.Xml" Version="0.2.0" />
         <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="3.1.2" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.52.0"/>
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.18.0" />
