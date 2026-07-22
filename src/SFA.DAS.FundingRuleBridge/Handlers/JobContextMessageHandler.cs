@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using ESFA.DC.JobContextManager.Interface;
 using ESFA.DC.JobContextManager.Model;
 using Microsoft.DurableTask;
@@ -51,8 +52,33 @@ public class JobContextMessageHandler(DurableTaskClient durableClient, ILogger<J
             logger.LogError("Job did not complete successfully, status: {FinalStatus}", existingInstance.RuntimeStatus);
             return false;
         }
+
+        if (TryGetJobResult(existingInstance, out var jobResult))
+        {
+            logger.LogInformation("Job completed with result: {JobResult}", jobResult.Value ? "Success" : "Failure");
+            return jobResult.Value;
+        }
+
+        logger.LogError("Job completed successfully but did not contain a JobResult");
+        return false;
+    }
+
+    private static bool TryGetJobResult(OrchestrationMetadata existingInstance, [NotNullWhen(true)]out bool? jobResult)
+    {
+        jobResult = null;
+        if (existingInstance.SerializedOutput is null)
+        {
+            return false;
+        }
         
-        logger.LogInformation("Job completed successfully");
-        return true;
+        try
+        {
+            jobResult = JsonSerializer.Deserialize<bool?>(existingInstance.SerializedOutput);
+            return jobResult.HasValue;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
