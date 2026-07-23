@@ -19,6 +19,7 @@ using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Handlers;
 using SFA.DAS.FundingRuleBridge.Jobs.Services;
 
@@ -74,7 +75,6 @@ public static class HostBuilderExtensions
         private FunctionsApplicationBuilder RegisterSldQueueingDependencies()
         {
             var sldConfig = builder.Configuration.GetSection("SLDTopic");
-
             var t = TimeSpan.Parse(sldConfig["MaxCallbackTimeSpan"] ?? "01:00:00");
 
             var sldTopicConfig = new TopicConfiguration(
@@ -98,12 +98,6 @@ public static class HostBuilderExtensions
             builder.Services.AddTransient<IJsonSerializationService, JsonSerializationService>();
             builder.Services.AddTransient<ISerializationService, JsonSerializationService>();
             builder.Services.AddTransient<IXmlSerializationService, XmlSerializationService>();
-            builder.Services.AddTransient<ITopicSubscriptionService<JobContextDto>>(sp =>
-            {
-                var serializer = sp.GetRequiredService<IJsonSerializationService>();
-                var logger = sp.GetRequiredService<ESFA.DC.Logging.Interfaces.ILogger>();
-                return new TopicSubscriptionSevice<JobContextDto>(sldTopicConfig, serializer, logger);
-            });
             
             builder.Services.AddTransient<ITopicPublishService<JobContextDto>>(sp =>
             {
@@ -122,8 +116,9 @@ public static class HostBuilderExtensions
                 return new QueuePublishService<AuditingDto>(auditQueueConfig, serializer);
             });
             builder.Services.AddTransient<IMessageHandler<JobContextMessage>, JobContextMessageHandler>();
-            builder.Services.AddHostedService<SldMessagingService>();
-            builder.Services.AddSingleton<JobContextManager<JobContextMessage>>();
+            //builder.Services.AddHostedService<SldMessagingService>();
+            //builder.Services.AddSingleton<JobContextManager<JobContextMessage>>();
+            builder.Services.AddTransient<IMessageHandler, CustomJobContextManager>();
             return builder;
         }
     }

@@ -17,7 +17,8 @@
     },
     "extensions": {
         "serviceBus": {
-            "autoCompleteMessages": true
+            "autoCompleteMessages": false,
+            "maxAutoLockRenewalDuration": "01:00:00"
         },
         "durableTask": {
             "tracing": {

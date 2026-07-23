@@ -8,4 +8,7 @@ public static class QueueConstants
     public const string InternalBusKey = "InternalServiceBus";
     public const string ExternalServiceBusConnectionString = "IncomingServiceBusConnection";
     public const string InternalServiceBusConnectionString = "ServiceBusConnection";
+    // TODO: need actual values
+    public const string JobContextMessageTopicName = "VALUE";
+    public const string JobContextMessageSubscriptionName = "ASFundingValidation";
 }
