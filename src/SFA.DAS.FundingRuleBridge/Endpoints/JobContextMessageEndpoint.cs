@@ -14,7 +14,7 @@ public class JobContextMessageEndpoint(
     ISerializationService serializationService)
 {
     [Function(nameof(JobContextMessageEndpoint))]
-    public async Task ValidateLearnerCallbackTrigger(
+    public async Task RunAsync(
         [ServiceBusTrigger(QueueConstants.JobContextMessageTopicName, QueueConstants.JobContextMessageSubscriptionName,
             Connection = QueueConstants.InternalServiceBusConnectionString, AutoCompleteMessages = false)]
         ServiceBusReceivedMessage message,
