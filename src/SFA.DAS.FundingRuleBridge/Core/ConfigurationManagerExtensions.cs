@@ -14,7 +14,6 @@ public static class ConfigurationManagerExtensions
         {
             configuration.AddAzureTableStorage(options =>
             {
-                options.ConfigurationNameIncludesVersionNumber = true;
                 options.PreFixConfigurationKeys = false;
 #if DEBUG
                 options.ConfigurationKeys = configuration.GetValue<string>("Values:ConfigNames")!.Split(",");

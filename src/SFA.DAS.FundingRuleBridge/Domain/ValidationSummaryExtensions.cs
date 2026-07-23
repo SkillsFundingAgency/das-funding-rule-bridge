@@ -8,7 +8,6 @@ public static class ValidationSummaryExtensions
         var failedValidation = items.Where(x => x.Status == ValidationStatus.Failed).ToList();
         return new JobSummary
         {
-            JobFailure = items.Any(x => x.Status == ValidationStatus.SystemError),
             Items = items,
             InvalidLearnerRefs = failedValidation.Select(x => x.Uln).Distinct().ToList(),
             RuleDescriptions = items.SelectMany(x => x.RuleDescriptions).Distinct().ToList(),

@@ -3,10 +3,8 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using ESFA.DC.ILR.Model;
-using FluentAssertions;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 using SFA.DAS.FundingRuleBridge.Jobs.Activities;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
@@ -23,7 +21,6 @@ public class DownloadAndParseIlrActivityTests
         Ukprn = "10034309",
         Container = "ilr2526-files",
         ValidIlrXmlFilename = "10034309/sample.xml",
-        InvalidLearnerRefsFilename = "10034309/invalid-learners.json",
     };
 
     private Mock<IIlrBlobStorageClient> _blobServiceClient = null!;
