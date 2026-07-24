@@ -43,6 +43,8 @@ jobs:
             TargetFileName: '*.schema.json'
             TableName: Configuration
             ConfigurationSecrets:
+              IlrBlobStorageConnection: $(IlrBlobStorageConnection)
+              IncomingServiceBusConnection: $(IncomingServiceBusConnection)
               NServiceBusLicense: $(NServiceBusLicense)
               SqlConnectionStringAdAuth: $(SqlConnectionStringAdAuth)
         - template: azure-pipelines-templates/deploy/step/function-deploy.yml@das-platform-building-blocks
