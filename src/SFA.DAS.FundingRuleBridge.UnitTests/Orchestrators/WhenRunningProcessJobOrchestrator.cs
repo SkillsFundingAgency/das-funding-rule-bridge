@@ -1,7 +1,4 @@
-﻿using Bogus;
-using ESFA.DC.JobContext.Interface;
-using ESFA.DC.JobContextManager.Model;
-using Microsoft.DurableTask;
+﻿using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging.Testing;
 using SFA.DAS.FundingRuleBridge.Jobs.Activities;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
@@ -15,7 +12,6 @@ public class WhenRunningProcessJobOrchestrator
     private const string InstanceId = "777";
     private Mock<TaskOrchestrationContext> _context;
     private FakeLogger<ProcessJobOrchestrator> _fakeLogger;
-    private Faker<JobContextMessage> _messageFaker;
 
     [SetUp]
     public void Setup()
@@ -28,25 +24,15 @@ public class WhenRunningProcessJobOrchestrator
         _context
             .Setup(x => x.InstanceId)
             .Returns(InstanceId);
-
-        _messageFaker = new Faker<JobContextMessage>()
-            .RuleFor(x => x.JobId, f => f.Random.Long(1, 1000000000))
-            .RuleFor(x => x.KeyValuePairs, f => new Dictionary<string, object>()
-            {
-                [JobContextMessageKey.Container] = $"Container_{f.Random.AlphaNumeric(10)}",
-                [JobContextMessageKey.UkPrn] = $"Ukprn_{f.Random.AlphaNumeric(10)}",
-                [JobContextMessageKey.Filename] = $"Filename_{f.Random.AlphaNumeric(10)}",
-            });
     }
 
     [Test, MoqAutoData]
-    public async Task Then_If_The_Download_Throws_Then_Fail_The_Job(ProcessJobMessage message)
+    public async Task Then_If_The_Download_Throws_Then_Fail_The_Job(ProcessJobMessage message, JobInfo jobInfo)
     {
         // arrange
-        var jobContextMessage = _messageFaker.Generate(1)[0];
         _context
-            .Setup(x => x.GetInput<JobContextMessage>())
-            .Returns(jobContextMessage);
+            .Setup(x => x.GetInput<JobInfo>())
+            .Returns(jobInfo);
         
         _context
             .Setup(x => x.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), It.IsAny<JobInfo>(), It.IsAny<TaskOptions?>()))
@@ -60,13 +46,12 @@ public class WhenRunningProcessJobOrchestrator
     }
     
     [Test, MoqAutoData]
-    public async Task Then_The_Job_Info_Is_Passed_To_DownloadAndParseIlrActivity()
+    public async Task Then_The_Job_Info_Is_Passed_To_DownloadAndParseIlrActivity(JobInfo jobInfo)
     {
         // arrange
-        var jobContextMessage = _messageFaker.Generate(1)[0];
         _context
-            .Setup(x => x.GetInput<JobContextMessage>())
-            .Returns(jobContextMessage);
+            .Setup(x => x.GetInput<JobInfo>())
+            .Returns(jobInfo);
         
         JobInfo? capturedJobInfo = null;
         _context
@@ -82,22 +67,18 @@ public class WhenRunningProcessJobOrchestrator
 
         // assert
         capturedJobInfo.Should().NotBeNull();
-        capturedJobInfo.JobId.Should().Be(jobContextMessage.JobId);
-        capturedJobInfo.Ukprn.Should().Be(jobContextMessage.KeyValuePairs[JobContextMessageKey.UkPrn] as string);
-        capturedJobInfo.Container.Should().Be(jobContextMessage.KeyValuePairs[JobContextMessageKey.Container] as string);
-        capturedJobInfo.ValidIlrXmlFilename.Should().Be(jobContextMessage.KeyValuePairs[JobContextMessageKey.Filename] as string);
+        capturedJobInfo.Should().BeEquivalentTo(jobInfo);
     }
 
     [Test, MoqAutoData]
-    public async Task Then_The_Job_Is_Processed_Successfully(LearnerSummary learnerSummary)
+    public async Task Then_The_Job_Is_Processed_Successfully(LearnerSummary learnerSummary, JobInfo jobInfo)
     {
         // arrange
         var validationSummary = new ValidationSummary("Uln", ValidationStatus.Passed, [], []);
 
-        var jobContextMessage = _messageFaker.Generate(1)[0];
         _context
-            .Setup(x => x.GetInput<JobContextMessage>())
-            .Returns(jobContextMessage);
+            .Setup(x => x.GetInput<JobInfo>())
+            .Returns(jobInfo);
         
         _context
             .Setup(x => x.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), It.IsAny<JobInfo>(), It.IsAny<TaskOptions?>()))

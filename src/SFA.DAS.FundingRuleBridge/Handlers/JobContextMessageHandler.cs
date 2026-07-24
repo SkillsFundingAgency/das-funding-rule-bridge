@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using ESFA.DC.JobContext.Interface;
 using ESFA.DC.JobContextManager.Model;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
@@ -41,8 +42,13 @@ public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger):
         
         if (existingInstance == null)
         {
+            if (!TryGetJobInfo(message, logger, out var jobInfo))
+            {
+                return false;
+            }
+            
             logger.LogInformation("Starting AS validation orchestration");
-            await DurableClient.ScheduleNewOrchestrationInstanceAsync(nameof(ProcessJobOrchestrator), message, new StartOrchestrationOptions(instanceId), cancellationToken);
+            await DurableClient.ScheduleNewOrchestrationInstanceAsync(nameof(ProcessJobOrchestrator), jobInfo, new StartOrchestrationOptions(instanceId), cancellationToken);
             logger.LogInformation("AS validation orchestration started with instance id: {InstanceId}", instanceId);
         }
 
@@ -82,5 +88,38 @@ public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger):
         {
             return false;
         }
+    }
+    
+    private static bool TryGetJobInfo(JobContextMessage jobContextMessage, ILogger logger, [NotNullWhen(true)] out JobInfo? jobInfo)
+    {
+        jobInfo = null;
+
+        if (!jobContextMessage.KeyValuePairs.TryGetValue(JobContextMessageKey.Container, out var container))
+        {
+            logger.LogCritical("JobContextMessage does not contain the Container value");
+            return false;
+        }
+        
+        if (!jobContextMessage.KeyValuePairs.TryGetValue(JobContextMessageKey.UkPrn, out var ukprn))
+        {
+            logger.LogCritical("JobContextMessage does not contain the Ukprn value");
+            return false;
+        }
+        
+        if (!jobContextMessage.KeyValuePairs.TryGetValue(JobContextMessageKey.Filename, out var filename))
+        {
+            logger.LogCritical("JobContextMessage does not contain the Filename value");
+            return false;
+        }
+        
+        jobInfo = new JobInfo
+        {
+            JobId = jobContextMessage.JobId,
+            Ukprn = (string)ukprn,
+            Container = (string)container,
+            ValidIlrXmlFilename = (string)filename,
+        };
+        
+        return true;
     }
 }

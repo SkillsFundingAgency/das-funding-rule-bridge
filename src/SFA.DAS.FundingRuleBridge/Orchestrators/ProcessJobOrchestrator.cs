@@ -1,6 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-using ESFA.DC.JobContext.Interface;
-using ESFA.DC.JobContextManager.Model;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -16,11 +13,7 @@ public class ProcessJobOrchestrator
     public static async Task<bool> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
         var logger = context.CreateReplaySafeLogger<ProcessJobOrchestrator>();
-        if (!TryParseJobInfo(context, logger, out var jobInfo))
-        {
-            return false;
-        }
-
+        var jobInfo = context.GetInput<JobInfo>()!;
         try
         {
             var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), jobInfo);
@@ -39,46 +32,6 @@ public class ProcessJobOrchestrator
             logger.LogCritical(ex, "Job failed with exception");
             return false;
         }
-    }
-
-    private static bool TryParseJobInfo(TaskOrchestrationContext context, ILogger logger, [NotNullWhen(true)] out JobInfo? jobInfo)
-    {
-        jobInfo = null;
-        var jobContextMessage = context.GetInput<JobContextMessage>();
-
-        if (jobContextMessage is null)
-        {
-            logger.LogCritical("JobContextMessage not available in the orchestration context");
-            return false;
-        }
-
-        if (!jobContextMessage.KeyValuePairs.TryGetValue(JobContextMessageKey.Container, out var container))
-        {
-            logger.LogCritical("JobContextMessage does not contain the Container value");
-            return false;
-        }
-        
-        if (!jobContextMessage.KeyValuePairs.TryGetValue(JobContextMessageKey.UkPrn, out var ukprn))
-        {
-            logger.LogCritical("JobContextMessage does not contain the Ukprn value");
-            return false;
-        }
-        
-        if (!jobContextMessage.KeyValuePairs.TryGetValue(JobContextMessageKey.Filename, out var filename))
-        {
-            logger.LogCritical("JobContextMessage does not contain the Filename value");
-            return false;
-        }
-        
-        jobInfo = new JobInfo
-        {
-            JobId = jobContextMessage.JobId,
-            Ukprn = (string)ukprn,
-            Container = (string)container,
-            ValidIlrXmlFilename = (string)filename,
-        };
-        
-        return true;
     }
 
     private static async Task<JobSummary> RunValidationAsync(TaskOrchestrationContext context, JobInfo jobInfo, List<LearnerSummary> learners, ILogger logger)
