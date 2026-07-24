@@ -9,19 +9,18 @@ using ESFA.DC.JobContextManager;
 using ESFA.DC.JobContextManager.Interface;
 using ESFA.DC.JobContextManager.Model;
 using ESFA.DC.JobStatus.Interface;
+using ESFA.DC.Logging.Interfaces;
 using ESFA.DC.Queueing;
 using ESFA.DC.Queueing.Interface;
-using ESFA.DC.Queueing.Interface.Configuration;
 using ESFA.DC.Serialization.Interfaces;
 using ESFA.DC.Serialization.Json;
 using ESFA.DC.Serialization.Xml;
-using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Handlers;
-using SFA.DAS.FundingRuleBridge.Jobs.Services;
+using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Core;
 
@@ -94,7 +93,7 @@ public static class HostBuilderExtensions
                 sldConfig["AuditQueueName"],
                 int.Parse(sldConfig["AuditMaxConcurrentCalls"] ?? "1"));
 
-            builder.Services.AddTransient<ESFA.DC.Logging.Interfaces.ILogger, SldLoggerAdapter>();
+            builder.Services.AddTransient<ILogger, SldLoggerAdapter>();
             builder.Services.AddTransient<IJsonSerializationService, JsonSerializationService>();
             builder.Services.AddTransient<ISerializationService, JsonSerializationService>();
             builder.Services.AddTransient<IXmlSerializationService, XmlSerializationService>();
@@ -115,9 +114,7 @@ public static class HostBuilderExtensions
                 var serializer = sp.GetRequiredService<IJsonSerializationService>();
                 return new QueuePublishService<AuditingDto>(auditQueueConfig, serializer);
             });
-            builder.Services.AddTransient<IMessageHandler<JobContextMessage>, JobContextMessageHandler>();
-            //builder.Services.AddHostedService<SldMessagingService>();
-            //builder.Services.AddSingleton<JobContextManager<JobContextMessage>>();
+            builder.Services.AddTransient<IJobContextMessageHandler, JobContextMessageHandler>();
             builder.Services.AddTransient<IMessageHandler, CustomJobContextManager>();
             return builder;
         }

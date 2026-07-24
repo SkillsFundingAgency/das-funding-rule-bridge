@@ -10,7 +10,7 @@ using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 namespace SFA.DAS.FundingRuleBridge.Jobs.Endpoints;
 
 public class JobContextMessageEndpoint(
-    IMessageHandler handler,
+    IMessageHandler messageHandler,
     ISerializationService serializationService)
 {
     [Function(nameof(JobContextMessageEndpoint))]
@@ -25,7 +25,7 @@ public class JobContextMessageEndpoint(
         try
         {
             var dto  = serializationService.Deserialize<JobContextDto>(Encoding.UTF8.GetString(message.Body));
-            var result = await handler.HandleAsync(dto, executionContext.CancellationToken);
+            var result = await messageHandler.HandleAsync(durableClient, dto, executionContext.CancellationToken);
             if (result.Result)
             {
                 await messageActions.CompleteMessageAsync(message, executionContext.CancellationToken);

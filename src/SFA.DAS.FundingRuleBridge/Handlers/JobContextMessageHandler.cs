@@ -1,24 +1,26 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
-using ESFA.DC.JobContextManager.Interface;
 using ESFA.DC.JobContextManager.Model;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
+using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Handlers;
 
 [SuppressMessage("Performance", "CA1873:Avoid potentially expensive logging")]
-public class JobContextMessageHandler(DurableTaskClient durableClient, ILogger<JobContextMessageHandler> logger): IMessageHandler<JobContextMessage>
+public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger): IJobContextMessageHandler
 {
+    public DurableTaskClient DurableClient { get; set; }
+    
     public async Task<bool> HandleAsync(JobContextMessage message, CancellationToken cancellationToken)
     {
         using var scope = logger.BeginScope(new Dictionary<string, object> { { "JobHandlerId", Guid.NewGuid() }, { "JobId", message.JobId } });
         
         logger.LogInformation("Received JobContextMessage");
         var instanceId = $"as-validation-{message.JobId}";
-        var existingInstance = await durableClient.GetInstanceAsync(instanceId, cancellationToken);
+        var existingInstance = await DurableClient.GetInstanceAsync(instanceId, cancellationToken);
             
         if (existingInstance is { RuntimeStatus: OrchestrationRuntimeStatus.Completed })
         {
@@ -40,11 +42,11 @@ public class JobContextMessageHandler(DurableTaskClient durableClient, ILogger<J
         if (existingInstance == null)
         {
             logger.LogInformation("Starting AS validation orchestration");
-            await durableClient.ScheduleNewOrchestrationInstanceAsync(nameof(ProcessJobOrchestrator), message, new StartOrchestrationOptions(instanceId), cancellationToken);
+            await DurableClient.ScheduleNewOrchestrationInstanceAsync(nameof(ProcessJobOrchestrator), message, new StartOrchestrationOptions(instanceId), cancellationToken);
             logger.LogInformation("AS validation orchestration started with instance id: {InstanceId}", instanceId);
         }
 
-        existingInstance = await durableClient.WaitForInstanceCompletionAsync(instanceId, true, cancellationToken);
+        existingInstance = await DurableClient.WaitForInstanceCompletionAsync(instanceId, true, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         
         if (existingInstance.RuntimeStatus != OrchestrationRuntimeStatus.Completed)
