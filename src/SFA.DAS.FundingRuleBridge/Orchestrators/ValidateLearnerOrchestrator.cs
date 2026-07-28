@@ -7,9 +7,9 @@ using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
 
-public class ValidateLearnerOrchestrator
+public partial class ValidateLearnerOrchestrator
 {
-    private const int ValidationTimeoutInHours = 1;
+    private const int ValidationTimeoutInMinutes = 10;
     
     [Function(nameof(ValidateLearnerOrchestrator))]
     public static async Task<ValidationSummary> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
@@ -23,14 +23,20 @@ public class ValidateLearnerOrchestrator
             input.CorrelationId,
             context.InstanceId
         );
+        var parameters = new Dictionary<string, object>
+        {
+            { "CorrelationId", input.CorrelationId },
+            { "WaitingInstanceId", context.InstanceId }
+        };
+        using var scope = logger.BeginScope(parameters);
 
         try
         {
             await context.CallActivityAsync(nameof(SendValidationRequestActivity), request);
-            logger.LogInformation("Sent validation request, waiting for result");
+            LogRequestSent(logger);
         
-            var validationResult = await context.WaitForExternalEvent<ValidateLearnerResult>("ValidationComplete", TimeSpan.FromHours(ValidationTimeoutInHours));
-            logger.LogInformation("Received validation result");
+            var validationResult = await context.WaitForExternalEvent<ValidateLearnerResult>("ValidationComplete", TimeSpan.FromMinutes(ValidationTimeoutInMinutes));
+            LogResultReceived(logger);
 
             return validationResult.ToValidationSummary(request.Uln);
         }
@@ -46,4 +52,10 @@ public class ValidateLearnerOrchestrator
         // system failure
         return new ValidationSummary(request.Uln, ValidationStatus.SystemError, [], []);
     }
+
+    [LoggerMessage(LogLevel.Debug, "Sent validation request, waiting for result")]
+    static partial void LogRequestSent(ILogger logger);
+
+    [LoggerMessage(LogLevel.Debug, "Received validation result")]
+    static partial void LogResultReceived(ILogger logger);
 }

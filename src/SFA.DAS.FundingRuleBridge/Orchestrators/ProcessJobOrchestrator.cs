@@ -14,6 +14,13 @@ public class ProcessJobOrchestrator
     {
         var logger = context.CreateReplaySafeLogger<ProcessJobOrchestrator>();
         var jobInfo = context.GetInput<JobInfo>()!;
+        var parameters = new Dictionary<string, string>
+        {
+            { "JobId", jobInfo.JobId.ToString() },
+            { "CorrelationId", context.InstanceId },
+        };
+        using var scope = logger.BeginScope(parameters);
+        
         try
         {
             var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), jobInfo);

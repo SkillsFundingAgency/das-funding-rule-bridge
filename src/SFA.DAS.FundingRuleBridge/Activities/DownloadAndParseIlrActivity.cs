@@ -10,24 +10,33 @@ using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Activities;
 
-public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient, XmlSerializer xmlSerializer, ILogger<DownloadAndParseIlrActivity> logger)
+public partial class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient, XmlSerializer xmlSerializer, ILogger<DownloadAndParseIlrActivity> logger)
 {
     [Function(nameof(DownloadAndParseIlrActivity))]
     public async Task<List<LearnerSummary>> Run([ActivityTrigger] JobInfo jobInfo, FunctionContext context)
     {
-        var containerClient = blobServiceClient.GetBlobContainerClient(jobInfo.Container);
+        var parameters = new Dictionary<string, object>
+        {
+            { "JobId", jobInfo.JobId },
+            { "Container", jobInfo.Container },
+            { "ValidIlrXmlFilename", jobInfo.ValidIlrXmlFilename }
+        };
         
-        return await FetchLearnersAsync(containerClient, jobInfo, context.CancellationToken);
+        using (logger.BeginScope(parameters))
+        {
+            var containerClient = blobServiceClient.GetBlobContainerClient(jobInfo.Container);
+            return await FetchLearnersAsync(containerClient, jobInfo, context.CancellationToken);    
+        }
     }
 
     private async Task<List<LearnerSummary>> FetchLearnersAsync(BlobContainerClient containerClient, JobInfo jobInfo, CancellationToken cancellationToken = default)
     {
-        logger.LogInformation("Downloading ILR file '{Filename}' from container '{Container}'.", jobInfo.ValidIlrXmlFilename, jobInfo.Container);
+        logger.LogDebug("Downloading ILR file");
         var blobClient = containerClient.GetBlobClient(jobInfo.ValidIlrXmlFilename);
         var exists = await blobClient.ExistsAsync(cancellationToken);
         if (!exists.Value)
         {
-            logger.LogError("ILR file not found in container: {Container}/{Filename}", jobInfo.Container, jobInfo.ValidIlrXmlFilename);
+            logger.LogError("ILR file not found in container");
             throw new FileNotFoundException($"ILR file not found in container: {jobInfo.Container}/{jobInfo.ValidIlrXmlFilename}");
         }
 
@@ -55,7 +64,7 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
             .Where(l => l.Courses is { Count: > 0 })
             .ToList();
 
-        logger.LogInformation("Parsed {Count} learners from '{Filename}'.", learners.Count, jobInfo.ValidIlrXmlFilename);
+        LogLearnerCount(learners.Count);
         return learners;
     }
 
@@ -111,4 +120,7 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
             age--;
         return age;
     }
+
+    [LoggerMessage(LogLevel.Information, "Found {LearnerCount} learners that match the required criteria")]
+    partial void LogLearnerCount(int learnerCount);
 }
