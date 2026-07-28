@@ -4,6 +4,7 @@ using ESFA.DC.JobContext.Interface;
 using ESFA.DC.Serialization.Interfaces;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
 using SFA.DAS.FundingRuleBridge.Jobs.Core;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 
@@ -11,7 +12,8 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Endpoints;
 
 public class JobContextMessageEndpoint(
     IMessageHandler messageHandler,
-    ISerializationService serializationService)
+    ISerializationService serializationService,
+    ILogger<JobContextMessageEndpoint> logger)
 {
     [Function(nameof(JobContextMessageEndpoint))]
     public async Task RunAsync(
@@ -22,19 +24,23 @@ public class JobContextMessageEndpoint(
         ServiceBusMessageActions messageActions,
         FunctionContext executionContext)
     {
+        var messageId = message.MessageId ?? "unknown";
         try
         {
+            logger.LogInformation("Received JobContextMessage: {MessageId}", messageId);
             var dto  = serializationService.Deserialize<JobContextDto>(Encoding.UTF8.GetString(message.Body));
             var result = await messageHandler.HandleAsync(durableClient, dto, executionContext.CancellationToken);
             if (result.Result)
             {
                 await messageActions.CompleteMessageAsync(message, executionContext.CancellationToken);
+                logger.LogInformation("JobContextMessage completed: {MessageId}", messageId);
             }
             else
             {
                 var dictionary = message.ApplicationProperties?.ToDictionary() ?? [];
                 var messageProperties = GetProperties(dictionary, result.Exception);
                 await messageActions.AbandonMessageAsync(message, messageProperties, executionContext.CancellationToken);
+                logger.LogInformation("JobContextMessage failed: {MessageId}", messageId);
             }
         }
         catch (Exception ex)
@@ -42,6 +48,7 @@ public class JobContextMessageEndpoint(
             var dictionary = message.ApplicationProperties?.ToDictionary() ?? [];
             var messageProperties = GetProperties(dictionary, ex);
             await messageActions.AbandonMessageAsync(message, messageProperties, executionContext.CancellationToken);
+            logger.LogError(ex, "Unhandled exception occured, marked message as failed {MessageId}", messageId);
         }
     }
     
