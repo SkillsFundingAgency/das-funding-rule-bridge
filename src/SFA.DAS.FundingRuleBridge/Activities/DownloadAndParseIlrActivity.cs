@@ -72,8 +72,11 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
                    ProgType: ProgrammeType.ApprenticeshipStandard,
                    AimType: AimTypes.ProgrammeAim
                }
-               || (learningDelivery.LearningDeliveryFAM?.Any(x => x.LearnDelFAMType == LearnDelFamTypes.Restart) ?? false);
+               && !IsRestart(learningDelivery);
     }
+
+    private static bool IsRestart(MessageLearnerLearningDelivery learningDelivery) => 
+        learningDelivery.LearningDeliveryFAM?.Any(x => x.LearnDelFAMType == LearnDelFamTypes.Restart) ?? false;
 
     private static Course BuildCourse(MessageLearnerLearningDelivery delivery, DateOnly dob)
     {
