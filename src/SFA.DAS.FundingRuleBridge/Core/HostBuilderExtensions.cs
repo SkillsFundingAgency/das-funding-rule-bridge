@@ -64,7 +64,14 @@ public static class HostBuilderExtensions
             services.AddKeyedSingleton(
                 typeof(ServiceBusClient),
                 QueueConstants.InternalBusKey,
-                (sp, _) => new ServiceBusClient(sp.GetRequiredService<IConfiguration>()[QueueConstants.InternalServiceBusConnectionString], new DefaultAzureCredential()));
+                (sp, _) =>
+                {
+                    var config = sp.GetRequiredService<IConfiguration>();
+                    var fqdn = config[$"{QueueConstants.InternalServiceBusConnectionString}:fullyQualifiedNamespace"];
+                    if (fqdn != null)
+                        return new ServiceBusClient(fqdn, new DefaultAzureCredential());
+                    return new ServiceBusClient(config[QueueConstants.InternalServiceBusConnectionString]!);
+                });
             
             services.AddSingleton<IIlrBlobStorageClient>(sp => new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
             services.AddSingleton<XmlSerializer>(_ => new XmlSerializer(typeof(Message), "ESFA/ILR/2025-26"));

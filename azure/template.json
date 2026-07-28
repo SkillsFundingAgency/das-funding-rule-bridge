@@ -307,7 +307,7 @@
                                     "value": "1"
                                 },
                                 {
-                                    "name": "ServiceBusConnection",
+                                    "name": "ServiceBusConnection__fullyQualifiedNamespace",
                                     "value": "[parameters('sharedServiceBusFqdn')]"
                                 }
                             ]
