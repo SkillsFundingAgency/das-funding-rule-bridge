@@ -10,54 +10,38 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
 public class ProcessJobOrchestrator
 {
     [Function(nameof(ProcessJobOrchestrator))]
-    public static async Task RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
+    public static async Task<bool> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
         var logger = context.CreateReplaySafeLogger<ProcessJobOrchestrator>();
-        var job = context.GetInput<ProcessJobMessage>()!;
-
-        var properties = new Dictionary<string, object>
+        var jobInfo = context.GetInput<JobInfo>()!;
+        var parameters = new Dictionary<string, string>
         {
+            { "JobId", jobInfo.JobId.ToString() },
             { "CorrelationId", context.InstanceId },
-            { "JobId", job.JobId },
         };
+        using var scope = logger.BeginScope(parameters);
         
-        using (logger.BeginScope(properties))
+        try
         {
-            logger.LogInformation("Processing job for UkPrn {UkPrn}", job.KeyValuePairs.Ukprn);
-            var jobInfo = new JobInfo
+            var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), jobInfo);
+            var jobSummary = await RunValidationAsync(context, jobInfo, learners, logger);
+            if (jobSummary.JobFailure)
             {
-                JobId = job.JobId,
-                Ukprn = job.KeyValuePairs.Ukprn,
-                Container = job.KeyValuePairs.Container,
-                ValidIlrXmlFilename = job.KeyValuePairs.Filename,
-                InvalidLearnerRefsFilename = job.KeyValuePairs.InvalidLearnRefNumbers,
-            };
-            
-            try
-            {
-                var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), jobInfo);
-                JobSummary jobSummary = await RunValidationAsync(context, job, learners, logger);
+                logger.LogCritical("Job failure signalled by downstream activity");
+                return false;
+            }
 
-                if (jobSummary.JobFailure)
-                {
-                    logger.LogCritical("Job failed");
-                    await SendJobFailedMessageAsync(context, job, logger);    
-                }
-                else
-                {
-                    await WriteJobFilesAsync(context, jobInfo, jobSummary);
-                    await CompleteJob(context, jobInfo, jobSummary, logger);
-                } 
-            }
-            catch (Exception ex)
-            {
-                logger.LogCritical(ex, "Job failed");
-                await SendJobFailedMessageAsync(context, job, logger);
-            }
+            await WriteJobFilesAsync(context, jobInfo, jobSummary);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex, "Job failed with exception");
+            return false;
         }
     }
 
-    private static async Task<JobSummary> RunValidationAsync(TaskOrchestrationContext context, ProcessJobMessage job, List<LearnerSummary> learners, ILogger logger)
+    private static async Task<JobSummary> RunValidationAsync(TaskOrchestrationContext context, JobInfo jobInfo, List<LearnerSummary> learners, ILogger logger)
     {
         logger.LogInformation("Fan out started");
         var subOrchestrations = learners.Select(learner =>
@@ -65,25 +49,24 @@ public class ProcessJobOrchestrator
                 nameof(ValidateLearnerOrchestrator),
                 new ValidateLearnerMessage
                 {
-                    JobId = job.JobId,
+                    JobId = jobInfo.JobId,
                     CorrelationId = context.InstanceId,
-                    Ukprn = job.KeyValuePairs.Ukprn,
+                    Ukprn = jobInfo.Ukprn,
                     Uln = learner.LearnRefNumber,
                     DateOfBirth = learner.DateOfBirth,
                     Courses = learner.Courses,
-                    Container = job.KeyValuePairs.Container,
-                    Filename = job.KeyValuePairs.Filename
+                    Container = jobInfo.Container,
+                    Filename = jobInfo.ValidIlrXmlFilename
                 }));
 
         var results = await Task.WhenAll(subOrchestrations);
         logger.LogInformation("Fan in complete");
-
         return results.ToJobSummary();
     }
 
     private static async Task WriteJobFilesAsync(TaskOrchestrationContext context, JobInfo jobInfo, JobSummary jobSummary)
     {
-        if (jobSummary.JobFailure || jobSummary.InvalidLearnerRefs is not { Count: > 0 })
+        if (jobSummary.InvalidLearnerRefs is not { Count: > 0 })
         {
             // nothing to write
             return;
@@ -97,33 +80,5 @@ public class ProcessJobOrchestrator
             RuleDescriptions = jobSummary.RuleDescriptions,
         };
         await context.CallActivityAsync(nameof(WriteJobsResultsActivity), writeSummaryRequest);
-    }
-
-    private static async Task CompleteJob(TaskOrchestrationContext context, JobInfo jobInfo, JobSummary jobSummary, ILogger logger)
-    {
-        // TODO: this probably isn't the format of the message to return
-        var message = new JobCompleteMessage
-        {
-            JobId = jobInfo.JobId,
-            Ukprn = jobInfo.Ukprn,
-            TotalLearners = jobSummary.Items.Count,
-            ValidCount = jobSummary.Items.Count(x => x.Status == ValidationStatus.Passed),
-            InvalidCount = jobSummary.InvalidLearnerRefs.Count,
-        };
-
-        await context.CallActivityAsync(nameof(SendJobCompleteActivity), message);
-        logger.LogInformation("Job complete (valid: {ValidCount}, invalid: {InvalidCount})", message.ValidCount, message.InvalidCount);
-    }
-    
-    private static async Task SendJobFailedMessageAsync(TaskOrchestrationContext context, ProcessJobMessage job, ILogger logger)
-    {
-        var message = new JobCompleteMessage
-        {
-            JobId = job.JobId,
-            Ukprn = job.KeyValuePairs.Ukprn,
-        };
-
-        await context.CallActivityAsync(nameof(SendJobCompleteActivity), message);
-        logger.LogInformation("Sent job failed message");
     }
 }
