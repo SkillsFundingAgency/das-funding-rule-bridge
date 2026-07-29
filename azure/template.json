@@ -89,6 +89,9 @@
         },
         "SharedServiceBusFqdn": {
             "type": "string"
+        },
+        "incomingServiceBusConnectionString": {
+            "type": "securestring"
         }
     },
     "variables": {
@@ -309,6 +312,10 @@
                                 {
                                     "name": "ServiceBusConnection__fullyQualifiedNamespace",
                                     "value": "[parameters('sharedServiceBusFqdn')]"
+                                },
+                                {
+                                    "name": "IncomingServiceBusConnection",
+                                    "value": "[parameters('incomingServiceBusConnectionString')]"
                                 }
                             ]
                         }
