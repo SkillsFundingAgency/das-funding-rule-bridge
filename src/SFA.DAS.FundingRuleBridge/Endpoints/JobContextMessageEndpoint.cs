@@ -18,7 +18,7 @@ public class JobContextMessageEndpoint(
     [Function(nameof(JobContextMessageEndpoint))]
     public async Task RunAsync(
         [ServiceBusTrigger(QueueConstants.JobContextMessageTopicName, QueueConstants.JobContextMessageSubscriptionName,
-            Connection = QueueConstants.InternalServiceBusConnectionString, AutoCompleteMessages = false)]
+            Connection = QueueConstants.ExternalServiceBusConnectionString, AutoCompleteMessages = false)]
         ServiceBusReceivedMessage message,
         [DurableClient] DurableTaskClient durableClient,
         ServiceBusMessageActions messageActions,
