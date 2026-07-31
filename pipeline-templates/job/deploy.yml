@@ -29,10 +29,8 @@ jobs:
             IsMultiRepoCheckout: true
             TemplateSecrets:
               ConfigurationStorageConnectionString: $(ConfigurationStorageConnectionString)
-              IlrBlobStorageConnection: $(IlrBlobStorageConnection)
-              IncomingServiceBusConnection: $(IncomingServiceBusConnection)
+              IncomingServiceBusConnectionString: $(IncomingServiceBusConnection)
               LoggingRedisConnectionString: $(LoggingRedisConnectionString)
-              ServiceBusConnection: $(ServiceBusConnectionString)
               SharedStorageAccountConnectionString: $(SharedStorageAccountConnectionString)
         - template: azure-pipelines-templates/deploy/step/generate-config.yml@das-platform-building-blocks
           parameters:
