@@ -91,12 +91,12 @@ public static class HostBuilderExtensions
                 maximumCallbackTimeSpan: t);
 
             var jobStatusQueueConfig = new QueueConfiguration(
-                sldConfig["ServiceBusConnection"],
+                builder.Configuration[QueueConstants.ExternalServiceBusConnectionString],
                 sldConfig["JobStatusQueueName"],
                 int.Parse(sldConfig["JobStatusMaxConcurrentCalls"] ?? "1"));
 
             var auditQueueConfig = new QueueConfiguration(
-                sldConfig["ServiceBusConnection"],
+                builder.Configuration[QueueConstants.ExternalServiceBusConnectionString],
                 sldConfig["AuditQueueName"],
                 int.Parse(sldConfig["AuditMaxConcurrentCalls"] ?? "1"));
 
