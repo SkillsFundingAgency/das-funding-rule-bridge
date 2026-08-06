@@ -2,8 +2,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Xml.Serialization;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
+using DC.ILR.Model;
 using ESFA.DC.Auditing.Interface;
-using ESFA.DC.ILR.Model;
 using ESFA.DC.JobContext.Interface;
 using ESFA.DC.JobContextManager;
 using ESFA.DC.JobContextManager.Interface;
@@ -74,7 +74,7 @@ public static class HostBuilderExtensions
                 });
             
             services.AddSingleton<IIlrBlobStorageClient>(sp => new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
-            services.AddSingleton<XmlSerializer>(_ => new XmlSerializer(typeof(Message), "ESFA/ILR/2026-27"));
+            services.AddSingleton<XmlSerializer>(_ => new XmlSerializer(typeof(Message), "ILR/2026-27"));
             return builder;
         }
         

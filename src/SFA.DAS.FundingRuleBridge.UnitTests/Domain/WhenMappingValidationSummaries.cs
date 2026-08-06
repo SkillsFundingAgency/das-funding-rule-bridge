@@ -1,5 +1,5 @@
 ﻿using Bogus;
-using ESFA.DC.ILR.IO.Model.Validation;
+using DC.ILR.IO.Model.Validation;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 
 namespace SFA.DAS.FundingRuleBridge.UnitTests.Domain;

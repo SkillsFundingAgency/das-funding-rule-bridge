@@ -1,11 +1,11 @@
 using Azure.Storage.Blobs.Models;
-using ESFA.DC.ILR.Model;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 using System.Xml.Serialization;
 using Azure.Storage.Blobs;
+using DC.ILR.Model;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Activities;

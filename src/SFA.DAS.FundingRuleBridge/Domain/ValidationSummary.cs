@@ -1,4 +1,4 @@
-﻿using ESFA.DC.ILR.IO.Model.Validation;
+﻿using DC.ILR.IO.Model.Validation;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Domain;
 

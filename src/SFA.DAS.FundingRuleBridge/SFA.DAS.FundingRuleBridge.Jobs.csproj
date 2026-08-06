@@ -12,7 +12,7 @@
         <FrameworkReference Include="Microsoft.AspNetCore.App"/>
         <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
         <PackageReference Include="Azure.Identity" Version="1.21.0" />
-        <PackageReference Include="ESFA.DC.ILR.2627.Model" Version="0.1.0" />
+        <PackageReference Include="DC.ILR.2627.Model" Version="0.2.6" />
         <PackageReference Include="ESFA.DC.JobContextManager" Version="0.4.7" />
         <PackageReference Include="ESFA.DC.Queueing" Version="0.2.0-beta0001" />
         <PackageReference Include="ESFA.DC.Serialization.Json" Version="0.2.0" />

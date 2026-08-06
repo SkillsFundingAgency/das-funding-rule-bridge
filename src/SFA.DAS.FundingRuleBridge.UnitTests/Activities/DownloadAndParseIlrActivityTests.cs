@@ -2,7 +2,7 @@ using System.Xml.Serialization;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using ESFA.DC.ILR.Model;
+using DC.ILR.Model;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
 using SFA.DAS.FundingRuleBridge.Jobs.Activities;
@@ -27,7 +27,7 @@ public class DownloadAndParseIlrActivityTests
     private Mock<BlobContainerClient> _containerClient = null!;
     private Mock<BlobClient> _blobClient = null!;
 
-    private readonly XmlSerializer _xmlSerializer = new(typeof(Message), "ESFA/ILR/2026-27");
+    private readonly XmlSerializer _xmlSerializer = new(typeof(Message), "ILR/2026-27");
 
     [SetUp]
     public void SetUp()
@@ -188,7 +188,7 @@ public class DownloadAndParseIlrActivityTests
     {
         const string emptyIlr = """
             <?xml version="1.0" encoding="utf-8"?>
-            <Message xmlns="ESFA/ILR/2026-27">
+            <Message xmlns="ILR/2026-27">
               <Header><CollectionDetails><Collection>ILR</Collection></CollectionDetails></Header>
             </Message>
             """;

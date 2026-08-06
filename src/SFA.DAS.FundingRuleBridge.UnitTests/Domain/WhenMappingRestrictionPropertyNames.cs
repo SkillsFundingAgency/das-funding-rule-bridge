@@ -1,4 +1,4 @@
-﻿using ESFA.DC.ILR.Model;
+﻿using DC.ILR.Model;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 
