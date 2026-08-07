@@ -9,13 +9,13 @@ using ESFA.DC.JobContextManager;
 using ESFA.DC.JobContextManager.Interface;
 using ESFA.DC.JobContextManager.Model;
 using ESFA.DC.JobStatus.Interface;
-using ESFA.DC.Logging.Interfaces;
 using ESFA.DC.Queueing;
 using ESFA.DC.Queueing.Interface;
 using ESFA.DC.Serialization.Interfaces;
 using ESFA.DC.Serialization.Json;
 using ESFA.DC.Serialization.Xml;
 using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
@@ -53,6 +53,7 @@ public static class HostBuilderExtensions
 
         private FunctionsApplicationBuilder RegisterServices()
         {
+            builder.Logging.AddOpenTelemetry(opt => opt.IncludeScopes = true);
             builder.Services.AddOpenTelemetryRegistration(builder.Configuration.GetValue<string>("APPLICATIONINSIGHTS_CONNECTION_STRING"));
             return builder;
         }
@@ -74,7 +75,7 @@ public static class HostBuilderExtensions
                 });
             
             services.AddSingleton<IIlrBlobStorageClient>(sp => new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
-            services.AddSingleton<XmlSerializer>(_ => new XmlSerializer(typeof(Message), "ILR/2026-27"));
+            services.AddSingleton<XmlSerializer>(_ => new XmlSerializer(typeof(Message), GlobalConstants.Ilr2627XmlNamespace));
             return builder;
         }
         
@@ -100,7 +101,7 @@ public static class HostBuilderExtensions
                 sldConfig["AuditQueueName"],
                 int.Parse(sldConfig["AuditMaxConcurrentCalls"] ?? "1"));
 
-            builder.Services.AddTransient<ILogger, SldLoggerAdapter>();
+            builder.Services.AddTransient<ESFA.DC.Logging.Interfaces.ILogger, SldLoggerAdapter>();
             builder.Services.AddTransient<IJsonSerializationService, JsonSerializationService>();
             builder.Services.AddTransient<ISerializationService, JsonSerializationService>();
             builder.Services.AddTransient<IXmlSerializationService, XmlSerializationService>();

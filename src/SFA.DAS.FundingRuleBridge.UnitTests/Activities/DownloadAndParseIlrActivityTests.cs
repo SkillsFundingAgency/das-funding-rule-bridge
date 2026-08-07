@@ -6,6 +6,7 @@ using DC.ILR.Model;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
 using SFA.DAS.FundingRuleBridge.Jobs.Activities;
+using SFA.DAS.FundingRuleBridge.Jobs.Core;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
@@ -27,7 +28,7 @@ public class DownloadAndParseIlrActivityTests
     private Mock<BlobContainerClient> _containerClient = null!;
     private Mock<BlobClient> _blobClient = null!;
 
-    private readonly XmlSerializer _xmlSerializer = new(typeof(Message), "ILR/2026-27");
+    private readonly XmlSerializer _xmlSerializer = new(typeof(Message), GlobalConstants.Ilr2627XmlNamespace);
 
     [SetUp]
     public void SetUp()
