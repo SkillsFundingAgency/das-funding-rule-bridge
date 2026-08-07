@@ -31,7 +31,7 @@ public class ProcessJobOrchestrator
                 return false;
             }
 
-            await WriteJobFilesAsync(context, jobInfo, jobSummary);
+            await WriteJobFilesAsync(context, jobInfo, jobSummary, logger);
             return true;
         }
         catch (Exception ex)
@@ -64,14 +64,16 @@ public class ProcessJobOrchestrator
         return results.ToJobSummary();
     }
 
-    private static async Task WriteJobFilesAsync(TaskOrchestrationContext context, JobInfo jobInfo, JobSummary jobSummary)
+    private static async Task WriteJobFilesAsync(TaskOrchestrationContext context, JobInfo jobInfo, JobSummary jobSummary, ILogger logger)
     {
         if (jobSummary.InvalidLearnerRefs is not { Count: > 0 })
         {
             // nothing to write
+            logger.LogInformation("Job contained no invalid learners, no files to write");
             return;
         }
         
+        logger.LogInformation("Job contained {InvalidLearnerCount} invalid learners", jobSummary.InvalidLearnerRefs);
         var writeSummaryRequest = new WriteJobResultsRequest
         {
             Job = jobInfo,
