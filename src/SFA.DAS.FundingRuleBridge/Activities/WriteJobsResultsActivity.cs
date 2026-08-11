@@ -15,7 +15,6 @@ public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceC
 {
     private const string ValidationErrorsFilename = "ASValidationErrors.json";
     private const string InvalidLearnersFilename = "ASInvalidLearnRefNumbers.json";
-    private const string ErrorLookupsFilename = "ASValidationErrorLookups.json";
     
     [Function(nameof(WriteJobsResultsActivity))]
     public async Task Run([ActivityTrigger] WriteJobResultsRequest request, FunctionContext context)
@@ -28,7 +27,6 @@ public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceC
         var client = blobServiceClient.GetBlobContainerClient(request.Job.Container);
         await WriteJsonFile(client, request.Job.GetJobPath(ValidationErrorsFilename), request.ValidationErrors, context.CancellationToken);
         await WriteJsonFile(client, request.Job.GetJobPath(InvalidLearnersFilename), request.InvalidLearnerRefs, context.CancellationToken);
-        await WriteJsonFile(client, request.Job.GetJobPath(ErrorLookupsFilename), request.RuleDescriptions, context.CancellationToken);
         await UpdateIlrAsync(client, request.Job, request.InvalidLearnerRefs, context.CancellationToken);
     }
 
