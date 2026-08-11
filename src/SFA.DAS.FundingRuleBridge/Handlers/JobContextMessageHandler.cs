@@ -25,8 +25,9 @@ public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger):
             
         if (existingInstance is { RuntimeStatus: OrchestrationRuntimeStatus.Completed })
         {
-            logger.LogInformation("Job previously handled and has completed");
-            return true;
+            existingInstance = null;
+            instanceId = $"{instanceId}-{Guid.NewGuid()}";
+            logger.LogInformation("Previous Job has completed, generating unique id '{UniqueInstanceId}' for subsequent job", instanceId);
         }
 
         if (existingInstance is { RuntimeStatus: OrchestrationRuntimeStatus.Running or OrchestrationRuntimeStatus.Suspended or OrchestrationRuntimeStatus.Pending })
