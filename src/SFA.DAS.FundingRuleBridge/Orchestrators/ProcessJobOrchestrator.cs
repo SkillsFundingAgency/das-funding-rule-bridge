@@ -73,7 +73,7 @@ public class ProcessJobOrchestrator
             return;
         }
         
-        logger.LogInformation("Job contained {InvalidLearnerCount} invalid learners", jobSummary.InvalidLearnerRefs);
+        logger.LogInformation("Job contained {InvalidLearnerCount} invalid learners", jobSummary.InvalidLearnerRefs.Count);
         var writeSummaryRequest = new WriteJobResultsRequest
         {
             Job = jobInfo,
