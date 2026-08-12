@@ -1,10 +1,8 @@
-﻿using System.Text;
-using System.Text.Json;
-using System.Xml;
-using System.Xml.Serialization;
+﻿using System.Text.Json;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using DC.ILR.Model;
+using ESFA.DC.Serialization.Interfaces;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
@@ -13,7 +11,7 @@ using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Activities;
 
-public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceClient, XmlSerializer xmlSerializer, ILogger<WriteJobsResultsActivity> logger)
+public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceClient, IXmlSerializationService serializationService, ILogger<WriteJobsResultsActivity> logger)
 {
     private const string ValidationErrorsFilename = "ASValidationErrors.json";
     private const string InvalidLearnersFilename = "ASInvalidLearnRefNumbers.json";
@@ -40,19 +38,18 @@ public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceC
         Message message;
         await using (var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false), cancellationToken))
         {
-            message = (Message)xmlSerializer.Deserialize(stream)!;
+            message = serializationService.Deserialize<Message>(stream)!;
         }
         
         // filter out the learners who failed validation
         message.Learner = message.Learner.ExceptBy(ids, x => x.LearnRefNumber).ToArray();
-        
-        await using var memoryStream = new MemoryStream();
-        await using var xmlTextWriter = new XmlTextWriter(memoryStream, Encoding.UTF8);
-        xmlTextWriter.Formatting = Formatting.Indented;
-        xmlSerializer.Serialize(xmlTextWriter, message);
-        var bytes = BinaryData.FromBytes(memoryStream.ToArray());
 
-        await blobClient.UploadAsync(bytes, overwrite: true, cancellationToken);
+        // save the message
+        await using var memoryStream = new MemoryStream();
+        serializationService.Serialize(message, memoryStream, true);
+        var data = BinaryData.FromBytes(memoryStream.ToArray());
+
+        await blobClient.UploadAsync(data, overwrite: true, cancellationToken);
         LogFileUpload(jobInfo.ValidIlrXmlFilename);
     }
 
