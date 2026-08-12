@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿using System.Text;
+using System.Text.Json;
+using System.Xml;
 using System.Xml.Serialization;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -44,10 +46,13 @@ public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceC
         // filter out the learners who failed validation
         message.Learner = message.Learner.ExceptBy(ids, x => x.LearnRefNumber).ToArray();
         
-        await using var sw = new StringWriter();
-        xmlSerializer.Serialize(sw, message);
-        
-        await blobClient.UploadAsync(BinaryData.FromString(sw.ToString()), overwrite: true, cancellationToken);
+        await using var memoryStream = new MemoryStream();
+        await using var xmlTextWriter = new XmlTextWriter(memoryStream, Encoding.UTF8);
+        xmlTextWriter.Formatting = Formatting.Indented;
+        xmlSerializer.Serialize(xmlTextWriter, message);
+        var bytes = BinaryData.FromBytes(memoryStream.ToArray());
+
+        await blobClient.UploadAsync(bytes, overwrite: true, cancellationToken);
         LogFileUpload(jobInfo.ValidIlrXmlFilename);
     }
 
