@@ -113,12 +113,20 @@ public partial class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServi
         };
     }
 
-    private static int CalculateAge(DateOnly dob, DateTime startDate)
+    internal static int CalculateAge(DateOnly dob, DateTime startDate)
     {
-        var age = startDate.Year - dob.Year;
-        if (startDate < dob.ToDateTime(TimeOnly.MinValue).AddYears(age))
-            age--;
-        return age;
+        // adapted from https://github.com/arman-g/AgeCalculator/blob/main/AgeCalculator/Models/Age.cs
+        var fromDate = dob.ToDateTime(TimeOnly.MinValue);
+        const int totalMonths = 12;
+        var remainderDay = fromDate.TimeOfDay > startDate.TimeOfDay ? 1 : 0;
+        var remainderMonth = fromDate.Day > startDate.Day - remainderDay ? 1 : 0;
+        if (fromDate.Month == startDate.Month)
+        {
+            return startDate.Year - fromDate.Year - remainderMonth;
+        }
+        
+        var months = fromDate.Month > startDate.Month ? totalMonths : 0;
+        return startDate.Year - fromDate.Year - months / totalMonths;
     }
 
     [LoggerMessage(LogLevel.Information, "Found {LearnerCount} learners that match the required criteria")]

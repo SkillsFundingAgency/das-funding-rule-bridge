@@ -45,4 +45,8 @@
             <CopyToPublishDirectory>Never</CopyToPublishDirectory>
         </None>
     </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="SFA.DAS.FundingRuleBridge.UnitTests" />
+    </ItemGroup>
 </Project>

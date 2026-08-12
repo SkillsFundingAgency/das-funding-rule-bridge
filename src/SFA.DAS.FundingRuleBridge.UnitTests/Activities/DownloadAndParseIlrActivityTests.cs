@@ -14,7 +14,7 @@ using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 namespace SFA.DAS.FundingRuleBridge.UnitTests.Activities;
 
 [TestFixture]
-public class DownloadAndParseIlrActivityTests
+internal class DownloadAndParseIlrActivityTests
 {
     private readonly JobInfo _jobInfo = new()
     {
@@ -214,5 +214,44 @@ public class DownloadAndParseIlrActivityTests
         var assembly = typeof(DownloadAndParseIlrActivityTests).Assembly;
         return assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' not found.");
+    }
+
+    // course doesn't start in leap year
+    [TestCase(2005, 9, 10, 2029, 9, 9, 23)]
+    [TestCase(2005, 9, 10, 2029, 9, 10, 24)]
+    // course starts in leap year
+    [TestCase(2005, 2, 28, 2028, 2, 29, 23)]
+    [TestCase(2005, 3, 1, 2028, 2, 29, 22)]
+    public void Then_If_The_Leaner_Is_Not_Born_In_A_Leap_Year_Then_The_Age_Is_Calculated_Correctly(int dobYear, int dobMonth, int dobDay, int year, int month, int day, int expectedAge)
+    {
+        // arrange
+        var dob = new DateOnly(dobYear, dobMonth, dobDay);
+        var startDate = new DateTime(year, month, day);
+
+        // act
+        var result = DownloadAndParseIlrActivity.CalculateAge(dob, startDate);
+            
+        // assert
+        result.Should().Be(expectedAge);
+    }
+    
+    // course doesn't start in leap year
+    [TestCase(2004, 2, 29, 2029, 2, 28, 24)]
+    [TestCase(2004, 2, 29, 2029, 3, 1, 25)]
+    // course starts in leap year
+    [TestCase(2004, 2, 29, 2028, 2, 28, 23)]
+    [TestCase(2004, 2, 29, 2028, 2, 29, 24)]
+    [TestCase(2004, 2, 29, 2028, 3, 1, 24)]
+    public void Then_If_The_Leaner_Is_Born_In_A_Leap_Year_Then_The_Age_Is_Calculated_Correctly(int dobYear, int dobMonth, int dobDay, int year, int month, int day, int expectedAge)
+    {
+        // arrange
+        var dob = new DateOnly(dobYear, dobMonth, dobDay);
+        var startDate = new DateTime(year, month, day);
+
+        // act
+        var result = DownloadAndParseIlrActivity.CalculateAge(dob, startDate);
+            
+        // assert
+        result.Should().Be(expectedAge);
     }
 }
