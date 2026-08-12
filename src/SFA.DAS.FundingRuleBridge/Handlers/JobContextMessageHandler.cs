@@ -17,58 +17,45 @@ public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger):
     
     public async Task<bool> HandleAsync(JobContextMessage message, CancellationToken cancellationToken)
     {
-        using var scope = logger.BeginScope(new Dictionary<string, object> { { "JobHandlerId", Guid.NewGuid() }, { "JobId", message.JobId } });
-        
+        using var _ = logger.BeginScope(new Dictionary<string, object> { { "JobId", message.JobId } });
         logger.LogInformation("Received JobContextMessage");
-        var instanceId = $"as-validation-{message.JobId}";
+
+        var count = 1;
+        var instanceId = $"as-val-{message.JobId}-{count}";
         var existingInstance = await DurableClient.GetInstanceAsync(instanceId, cancellationToken);
-            
-        if (existingInstance is { RuntimeStatus: OrchestrationRuntimeStatus.Completed })
+
+        while (existingInstance is not null)
         {
-            existingInstance = null;
-            instanceId = $"{instanceId}-{Guid.NewGuid()}";
-            logger.LogInformation("Previous Job has completed, generating unique id '{UniqueInstanceId}' for subsequent job", instanceId);
+            logger.LogInformation("Found existing instance '{InstanceId}' ({RuntimeStatus}), incrementing instance id", instanceId, existingInstance.RuntimeStatus);
+            instanceId = $"as-val-{message.JobId}-{++count}";
+            existingInstance = await DurableClient.GetInstanceAsync(instanceId, cancellationToken);
         }
 
-        if (existingInstance is { RuntimeStatus: OrchestrationRuntimeStatus.Running or OrchestrationRuntimeStatus.Suspended or OrchestrationRuntimeStatus.Pending })
+        if (!TryGetJobInfo(message, logger, out var jobInfo))
         {
-            logger.LogInformation("Job already in progress, waiting for that instance to complete");
+            logger.LogError("{InstanceId}: Failed to get job info from message", instanceId);
+            return false;
         }
-        
-        if (existingInstance is { RuntimeStatus: OrchestrationRuntimeStatus.Failed or OrchestrationRuntimeStatus.Terminated })
-        {
-            logger.LogWarning("Job has previously failed or been terminated, re-running");
-            existingInstance = null;
-        }
-        
-        if (existingInstance == null)
-        {
-            if (!TryGetJobInfo(message, logger, out var jobInfo))
-            {
-                return false;
-            }
             
-            logger.LogInformation("Starting AS validation orchestration");
-            await DurableClient.ScheduleNewOrchestrationInstanceAsync(nameof(ProcessJobOrchestrator), jobInfo, new StartOrchestrationOptions(instanceId), cancellationToken);
-            logger.LogInformation("AS validation orchestration started with instance id: {InstanceId}", instanceId);
-        }
+        await DurableClient.ScheduleNewOrchestrationInstanceAsync(nameof(ProcessJobOrchestrator), jobInfo, new StartOrchestrationOptions(instanceId), cancellationToken);
+        logger.LogInformation("{InstanceId}: Started AS validation orchestration", instanceId);
 
         existingInstance = await DurableClient.WaitForInstanceCompletionAsync(instanceId, true, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         
         if (existingInstance.RuntimeStatus != OrchestrationRuntimeStatus.Completed)
         {
-            logger.LogError("Job did not complete successfully, status: {FinalStatus}", existingInstance.RuntimeStatus);
+            logger.LogError("{InstanceId}: Job did not complete successfully, status: {FinalStatus}", instanceId, existingInstance.RuntimeStatus);
             return false;
         }
 
         if (TryGetJobResult(existingInstance, out var jobResult))
         {
-            logger.LogInformation("Job completed with result: {JobResult}", jobResult.Value ? "Success" : "Failure");
+            logger.LogInformation("{InstanceId}: Job completed with result: {JobResult}", instanceId, jobResult.Value ? "Success" : "Failure");
             return jobResult.Value;
         }
 
-        logger.LogError("Job completed successfully but did not contain a JobResult");
+        logger.LogError("{InstanceId}: Job completed successfully but did not contain a JobResult", instanceId);
         return false;
     }
 
