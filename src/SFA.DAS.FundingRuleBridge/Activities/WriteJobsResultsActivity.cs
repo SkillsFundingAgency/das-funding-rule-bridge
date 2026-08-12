@@ -55,7 +55,9 @@ public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceC
     {
         var json = JsonSerializer.Serialize(content);
         var payload = BinaryData.FromString(json);
-        await client.UploadBlobAsync(filename, payload, cancellationToken);
+
+        var blobClient = client.GetBlobClient(filename);
+        await blobClient.UploadAsync(payload, overwrite: true, cancellationToken);
         LogFileUpload(filename);
     }
 
