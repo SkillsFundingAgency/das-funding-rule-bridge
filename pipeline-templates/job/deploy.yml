@@ -45,7 +45,7 @@ jobs:
               IlrBlobStorageConnection: $(IlrBlobStorageConnection)
               IncomingServiceBusConnection: $(IncomingServiceBusConnection)
               NServiceBusLicense: $(NServiceBusLicense)
-              ServiceBusConnection: $(ServiceBusConnectionString)
+              ServiceBusConnectionString: $(ServiceBusConnectionString)
               SqlConnectionStringAdAuth: $(SqlConnectionStringAdAuth)
         - template: azure-pipelines-templates/deploy/step/function-deploy.yml@das-platform-building-blocks
           parameters:
