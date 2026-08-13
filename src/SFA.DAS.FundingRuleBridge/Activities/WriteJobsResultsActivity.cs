@@ -38,7 +38,7 @@ public partial class WriteJobsResultsActivity(IIlrBlobStorageClient blobServiceC
         Message message;
         await using (var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false), cancellationToken))
         {
-            message = serializationService.Deserialize<Message>(stream)!;
+            message = serializationService.Deserialize<Message>(stream);
         }
         
         // filter out the learners who failed validation
