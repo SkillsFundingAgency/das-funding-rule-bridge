@@ -1,30 +1,47 @@
 using Azure.Storage.Blobs.Models;
-using ESFA.DC.ILR.Model;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 using System.Xml.Serialization;
+using Azure.Storage.Blobs;
+using DC.ILR.Model;
+using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Activities;
 
-public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient, ILogger<DownloadAndParseIlrActivity> logger)
+public partial class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient, XmlSerializer xmlSerializer, ILogger<DownloadAndParseIlrActivity> logger)
 {
-    private static readonly XmlSerializer Serializer = new(typeof(Message), "ESFA/ILR/2025-26");
-
     [Function(nameof(DownloadAndParseIlrActivity))]
-    public async Task<List<LearnerSummary>> Run(
-        [ActivityTrigger] IlrFileReference fileRef,
-        FunctionContext context)
+    public async Task<List<LearnerSummary>> Run([ActivityTrigger] JobInfo jobInfo, FunctionContext context)
     {
-        logger.LogInformation("Downloading ILR file '{Filename}' from container '{Container}'.",
-            fileRef.Filename, fileRef.Container);
+        var parameters = new Dictionary<string, object>
+        {
+            { "JobId", jobInfo.JobId },
+            { "Container", jobInfo.Container },
+            { "ValidIlrXmlFilename", jobInfo.ValidIlrXmlFilename }
+        };
+        
+        using (logger.BeginScope(parameters))
+        {
+            var containerClient = blobServiceClient.GetBlobContainerClient(jobInfo.Container);
+            return await FetchLearnersAsync(containerClient, jobInfo, context.CancellationToken);    
+        }
+    }
 
-        var containerClient = blobServiceClient.GetBlobContainerClient(fileRef.Container);
-        var blobClient = containerClient.GetBlobClient(fileRef.Filename);
+    private async Task<List<LearnerSummary>> FetchLearnersAsync(BlobContainerClient containerClient, JobInfo jobInfo, CancellationToken cancellationToken = default)
+    {
+        logger.LogDebug("Downloading ILR file");
+        var blobClient = containerClient.GetBlobClient(jobInfo.ValidIlrXmlFilename);
+        var exists = await blobClient.ExistsAsync(cancellationToken);
+        if (!exists.Value)
+        {
+            logger.LogError("ILR file not found in container");
+            throw new FileNotFoundException($"ILR file not found in container: {jobInfo.Container}/{jobInfo.ValidIlrXmlFilename}");
+        }
 
-        await using var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false));
-        var message = (Message)Serializer.Deserialize(stream)!;
+        await using var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false), cancellationToken);
+        var message = (Message)xmlSerializer.Deserialize(stream)!;
 
         var learners = (message.Learner ?? [])
             .Where(l => !string.IsNullOrEmpty(l.LearnRefNumber))
@@ -33,7 +50,8 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
                 var dob = DateOnly.FromDateTime(l.DateOfBirth);
 
                 var courses = (l.LearningDelivery ?? [])
-                    .Select(d => BuildCourse(d, dob))
+                    .Where(x => IsValidApprenticeship(x) || IsValidShortCourse(x))
+                    .Select(x => BuildCourse(x, dob))
                     .ToList();
 
                 return new LearnerSummary
@@ -43,12 +61,31 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
                     Courses = courses
                 };
             })
+            .Where(l => l.Courses is { Count: > 0 })
             .ToList();
 
-        logger.LogInformation("Parsed {Count} learners from '{Filename}'.", learners.Count, fileRef.Filename);
-
+        LogLearnerCount(learners.Count);
         return learners;
     }
+
+    private static bool IsValidShortCourse(MessageLearnerLearningDelivery learningDelivery)
+    {
+        return learningDelivery is { FundModel: FundingModel.NonFunded, ProgType: ProgrammeType.GrowthAndSkillsOfferApprenticeshipUnits };
+    }
+
+    private static bool IsValidApprenticeship(MessageLearnerLearningDelivery learningDelivery)
+    {
+        return learningDelivery is
+               {
+                   FundModel: FundingModel.Apprenticeships,
+                   ProgType: ProgrammeType.ApprenticeshipStandard,
+                   AimType: AimTypes.ProgrammeAim
+               }
+               && !IsRestart(learningDelivery);
+    }
+
+    private static bool IsRestart(MessageLearnerLearningDelivery learningDelivery) => 
+        learningDelivery.LearningDeliveryFAM?.Any(x => x.LearnDelFAMType == LearnDelFamTypes.Restart) ?? false;
 
     private static Course BuildCourse(MessageLearnerLearningDelivery delivery, DateOnly dob)
     {
@@ -59,7 +96,7 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
         return new Course
         {
             Id = delivery.LearnAimRef,
-            Type = progType == 25 ? CourseType.Apprenticeship : CourseType.ShortCourse, // TODO: add FunctionalSkill mapping once ILR field/value is confirmed
+            AimSequenceNumber = delivery.AimSeqNumber,
             TrainingType = progType == 25 ? TrainingType.Standard : TrainingType.ShortCourse,
             StandardCode = delivery.StdCodeSpecified ? delivery.StdCode : null,
             StartDate = startDate,
@@ -76,11 +113,22 @@ public class DownloadAndParseIlrActivity(IIlrBlobStorageClient blobServiceClient
         };
     }
 
-    private static int CalculateAge(DateOnly dob, DateTime startDate)
+    internal static int CalculateAge(DateOnly dob, DateTime startDate)
     {
-        var age = startDate.Year - dob.Year;
-        if (startDate < dob.ToDateTime(TimeOnly.MinValue).AddYears(age))
-            age--;
-        return age;
+        // adapted from https://github.com/arman-g/AgeCalculator/blob/main/AgeCalculator/Models/Age.cs
+        var fromDate = dob.ToDateTime(TimeOnly.MinValue);
+        const int totalMonths = 12;
+        var remainderDay = fromDate.TimeOfDay > startDate.TimeOfDay ? 1 : 0;
+        var remainderMonth = fromDate.Day > startDate.Day - remainderDay ? 1 : 0;
+        if (fromDate.Month == startDate.Month)
+        {
+            return startDate.Year - fromDate.Year - remainderMonth;
+        }
+        
+        var months = fromDate.Month > startDate.Month ? totalMonths : 0;
+        return startDate.Year - fromDate.Year - months / totalMonths;
     }
+
+    [LoggerMessage(LogLevel.Information, "Found {LearnerCount} learners that match the required criteria")]
+    partial void LogLearnerCount(int learnerCount);
 }

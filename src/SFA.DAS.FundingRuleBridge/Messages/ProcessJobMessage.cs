@@ -11,4 +11,5 @@ public record ProcessJobKeyValues
     public string Ukprn { get; init; } = default!;
     public string Container { get; init; } = default!;
     public string Filename { get; init; } = default!;
+    public string InvalidLearnRefNumbers { get; init; } = default!;
 }

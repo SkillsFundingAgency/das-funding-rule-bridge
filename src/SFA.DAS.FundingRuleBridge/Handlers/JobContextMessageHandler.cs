@@ -1,0 +1,113 @@
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+using ESFA.DC.JobContext.Interface;
+using ESFA.DC.JobContextManager.Model;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
+using SFA.DAS.FundingRuleBridge.Jobs.Domain;
+using SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
+
+namespace SFA.DAS.FundingRuleBridge.Jobs.Handlers;
+
+[SuppressMessage("Performance", "CA1873:Avoid potentially expensive logging")]
+public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger): IJobContextMessageHandler
+{
+    public DurableTaskClient DurableClient { get; set; }
+    
+    public async Task<bool> HandleAsync(JobContextMessage message, CancellationToken cancellationToken)
+    {
+        using var _ = logger.BeginScope(new Dictionary<string, object> { { "JobId", message.JobId } });
+        logger.LogInformation("Received JobContextMessage");
+
+        var count = 1;
+        var instanceId = $"as-val-{message.JobId}-{count}";
+        var existingInstance = await DurableClient.GetInstanceAsync(instanceId, cancellationToken);
+
+        while (existingInstance is not null)
+        {
+            logger.LogInformation("Found existing instance '{InstanceId}' ({RuntimeStatus}), incrementing instance id", instanceId, existingInstance.RuntimeStatus);
+            instanceId = $"as-val-{message.JobId}-{++count}";
+            existingInstance = await DurableClient.GetInstanceAsync(instanceId, cancellationToken);
+        }
+
+        if (!TryGetJobInfo(message, logger, out var jobInfo))
+        {
+            logger.LogError("{InstanceId}: Failed to get job info from message", instanceId);
+            return false;
+        }
+            
+        await DurableClient.ScheduleNewOrchestrationInstanceAsync(nameof(ProcessJobOrchestrator), jobInfo, new StartOrchestrationOptions(instanceId), cancellationToken);
+        logger.LogInformation("{InstanceId}: Started AS validation orchestration", instanceId);
+
+        existingInstance = await DurableClient.WaitForInstanceCompletionAsync(instanceId, true, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        
+        if (existingInstance.RuntimeStatus != OrchestrationRuntimeStatus.Completed)
+        {
+            logger.LogError("{InstanceId}: Job did not complete successfully, status: {FinalStatus}", instanceId, existingInstance.RuntimeStatus);
+            return false;
+        }
+
+        if (TryGetJobResult(existingInstance, out var jobResult))
+        {
+            logger.LogInformation("{InstanceId}: Job completed with result: {JobResult}", instanceId, jobResult.Value ? "Success" : "Failure");
+            return jobResult.Value;
+        }
+
+        logger.LogError("{InstanceId}: Job completed successfully but did not contain a JobResult", instanceId);
+        return false;
+    }
+
+    private static bool TryGetJobResult(OrchestrationMetadata existingInstance, [NotNullWhen(true)]out bool? jobResult)
+    {
+        jobResult = null;
+        if (existingInstance.SerializedOutput is null)
+        {
+            return false;
+        }
+        
+        try
+        {
+            jobResult = JsonSerializer.Deserialize<bool?>(existingInstance.SerializedOutput);
+            return jobResult.HasValue;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+    
+    private static bool TryGetJobInfo(JobContextMessage jobContextMessage, ILogger logger, [NotNullWhen(true)] out JobInfo? jobInfo)
+    {
+        jobInfo = null;
+
+        if (!jobContextMessage.KeyValuePairs.TryGetValue(JobContextMessageKey.Container, out var container))
+        {
+            logger.LogCritical("JobContextMessage does not contain the Container value");
+            return false;
+        }
+        
+        if (!jobContextMessage.KeyValuePairs.TryGetValue(JobContextMessageKey.UkPrn, out var ukprn))
+        {
+            logger.LogCritical("JobContextMessage does not contain the Ukprn value");
+            return false;
+        }
+        
+        if (!jobContextMessage.KeyValuePairs.TryGetValue(JobContextMessageKey.Filename, out var filename))
+        {
+            logger.LogCritical("JobContextMessage does not contain the Filename value");
+            return false;
+        }
+        
+        jobInfo = new JobInfo
+        {
+            JobId = jobContextMessage.JobId,
+            Ukprn = (string)ukprn,
+            Container = (string)container,
+            ValidIlrXmlFilename = (string)filename,
+        };
+        
+        return true;
+    }
+}

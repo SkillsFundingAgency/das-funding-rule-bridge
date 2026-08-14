@@ -1,24 +1,34 @@
+using System.Xml.Serialization;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using FluentAssertions;
+using DC.ILR.Model;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 using SFA.DAS.FundingRuleBridge.Jobs.Activities;
+using SFA.DAS.FundingRuleBridge.Jobs.Core;
+using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 
 namespace SFA.DAS.FundingRuleBridge.UnitTests.Activities;
 
 [TestFixture]
-public class DownloadAndParseIlrActivityTests
+internal class DownloadAndParseIlrActivityTests
 {
-    private const string Container = "ilr2526-files";
-    private const string Filename = "10034309/sample.xml";
+    private readonly JobInfo _jobInfo = new()
+    {
+        JobId = 777,
+        Ukprn = "10034309",
+        Container = "ilr2526-files",
+        ValidIlrXmlFilename = "10034309/sample.xml",
+    };
 
     private Mock<IIlrBlobStorageClient> _blobServiceClient = null!;
     private Mock<BlobContainerClient> _containerClient = null!;
     private Mock<BlobClient> _blobClient = null!;
+
+    private readonly XmlSerializer _xmlSerializer = new(typeof(Message), GlobalConstants.Ilr2627XmlNamespace);
 
     [SetUp]
     public void SetUp()
@@ -28,44 +38,47 @@ public class DownloadAndParseIlrActivityTests
         _blobClient = new Mock<BlobClient>();
 
         _blobServiceClient
-            .Setup(s => s.GetBlobContainerClient(Container))
+            .Setup(s => s.GetBlobContainerClient(_jobInfo.Container))
             .Returns(_containerClient.Object);
 
         _containerClient
-            .Setup(c => c.GetBlobClient(Filename))
+            .Setup(c => c.GetBlobClient(_jobInfo.ValidIlrXmlFilename))
             .Returns(_blobClient.Object);
     }
 
     [Test]
-    public async Task Run_ReturnsAllLearners()
+    public async Task Run_Returns_QualifyingLearners()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
-        result.Should().HaveCount(9);
-        result.Select(l => l.LearnRefNumber).Should().BeEquivalentTo([
-            "9000004402", "9000009803", "9000567903", "9000568004",
-            "9001019004", "9001019101", "9001019209", "9001019306", "DEVCONTRA1"
-        ]);
+        result.Should().HaveCount(3);
+        result.Select(l => l.LearnRefNumber).Should().BeEquivalentTo("9000004402", "9000009803", "9000567903");
     }
 
     [Test]
     public async Task Run_ParsesDateOfBirthCorrectly()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         result.First(l => l.LearnRefNumber == "9000004402").DateOfBirth
             .Should().Be(new DateOnly(2000, 1, 2));
@@ -74,14 +87,17 @@ public class DownloadAndParseIlrActivityTests
     [Test]
     public async Task Run_ParsesCoursesForEachLearner()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         var firstLearner = result.First(l => l.LearnRefNumber == "9000004402");
         firstLearner.Courses.Should().HaveCount(3);
@@ -107,14 +123,17 @@ public class DownloadAndParseIlrActivityTests
     [Test]
     public async Task Run_MapsCompStatusToLearnerCourseStatus()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         // 9000009803 has CompStatus=3 (Withdrawn)
         result.First(l => l.LearnRefNumber == "9000009803")
@@ -128,14 +147,17 @@ public class DownloadAndParseIlrActivityTests
     [Test]
     public async Task Run_UsesActualEndDate_WhenPresent()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         // 9000567903 first delivery has LearnActEndDate=2025-08-06, PlannedEndDate=2025-06-19
         result.First(l => l.LearnRefNumber == "9000567903")
@@ -145,14 +167,17 @@ public class DownloadAndParseIlrActivityTests
     [Test]
     public async Task Run_FallsBackToPlannedEndDate_WhenNoActualEndDate()
     {
-        using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        await using var stream = LoadTestXml("SFA.DAS.FundingRuleBridge.UnitTests.TestData.sample-ilr.xml");
+        _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
         _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         // 9000004402 first delivery has no LearnActEndDate, PlannedEndDate=2025-09-27
         result.First(l => l.LearnRefNumber == "9000004402")
@@ -164,19 +189,22 @@ public class DownloadAndParseIlrActivityTests
     {
         const string emptyIlr = """
             <?xml version="1.0" encoding="utf-8"?>
-            <Message xmlns="ESFA/ILR/2025-26">
+            <Message xmlns="ILR/2026-27">
               <Header><CollectionDetails><Collection>ILR</Collection></CollectionDetails></Header>
             </Message>
             """;
 
         using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(emptyIlr));
         _blobClient
+            .Setup(x => x.ExistsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response.FromValue(true, new MockResponse()));
+        _blobClient
             .Setup(b => b.OpenReadAsync(It.IsAny<BlobOpenReadOptions>(), default))
             .ReturnsAsync(stream);
 
-        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, NullLogger<DownloadAndParseIlrActivity>.Instance);
+        var sut = new DownloadAndParseIlrActivity(_blobServiceClient.Object, _xmlSerializer, NullLogger<DownloadAndParseIlrActivity>.Instance);
 
-        var result = await sut.Run(new IlrFileReference { Container = Container, Filename = Filename }, Mock.Of<FunctionContext>());
+        var result = await sut.Run(_jobInfo, Mock.Of<FunctionContext>());
 
         result.Should().BeEmpty();
     }
@@ -186,5 +214,44 @@ public class DownloadAndParseIlrActivityTests
         var assembly = typeof(DownloadAndParseIlrActivityTests).Assembly;
         return assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' not found.");
+    }
+
+    // course doesn't start in leap year
+    [TestCase(2005, 9, 10, 2029, 9, 9, 23)]
+    [TestCase(2005, 9, 10, 2029, 9, 10, 24)]
+    // course starts in leap year
+    [TestCase(2005, 2, 28, 2028, 2, 29, 23)]
+    [TestCase(2005, 3, 1, 2028, 2, 29, 22)]
+    public void Then_If_The_Leaner_Is_Not_Born_In_A_Leap_Year_Then_The_Age_Is_Calculated_Correctly(int dobYear, int dobMonth, int dobDay, int year, int month, int day, int expectedAge)
+    {
+        // arrange
+        var dob = new DateOnly(dobYear, dobMonth, dobDay);
+        var startDate = new DateTime(year, month, day);
+
+        // act
+        var result = DownloadAndParseIlrActivity.CalculateAge(dob, startDate);
+            
+        // assert
+        result.Should().Be(expectedAge);
+    }
+    
+    // course doesn't start in leap year
+    [TestCase(2004, 2, 29, 2029, 2, 28, 24)]
+    [TestCase(2004, 2, 29, 2029, 3, 1, 25)]
+    // course starts in leap year
+    [TestCase(2004, 2, 29, 2028, 2, 28, 23)]
+    [TestCase(2004, 2, 29, 2028, 2, 29, 24)]
+    [TestCase(2004, 2, 29, 2028, 3, 1, 24)]
+    public void Then_If_The_Leaner_Is_Born_In_A_Leap_Year_Then_The_Age_Is_Calculated_Correctly(int dobYear, int dobMonth, int dobDay, int year, int month, int day, int expectedAge)
+    {
+        // arrange
+        var dob = new DateOnly(dobYear, dobMonth, dobDay);
+        var startDate = new DateTime(year, month, day);
+
+        // act
+        var result = DownloadAndParseIlrActivity.CalculateAge(dob, startDate);
+            
+        // assert
+        result.Should().Be(expectedAge);
     }
 }

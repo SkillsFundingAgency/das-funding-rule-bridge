@@ -10,9 +10,27 @@
             "enableLiveMetricsFilters": true
         },
         "logLevel": {
-            "default": "Debug",
-            "Host": "Debug",
-            "Function": "Debug"
+            "default": "Information",
+            "Host": "Information",
+            "Function": "Information"
+        },
+        "openTelemetry": {
+            "includeScopes": true
+        },
+        "console": {
+            "includeScopes": true
+        }
+    },
+    "extensions": {
+        "serviceBus": {
+            "autoCompleteMessages": false,
+            "maxAutoLockRenewalDuration": "01:00:00"
+        },
+        "durableTask": {
+            "tracing": {
+                "distributedTracingEnabled": true,
+                "version": "V2"
+            }
         }
     }
 }

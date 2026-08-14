@@ -2,6 +2,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
 using SFA.DAS.FundingRuleBridge.Jobs.Activities;
+using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Messages;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
@@ -9,56 +10,77 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Orchestrators;
 public class ProcessJobOrchestrator
 {
     [Function(nameof(ProcessJobOrchestrator))]
-    public static async Task RunOrchestrator(
-        [OrchestrationTrigger] TaskOrchestrationContext context)
+    public static async Task<bool> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
         var logger = context.CreateReplaySafeLogger<ProcessJobOrchestrator>();
-        var job = context.GetInput<ProcessJobMessage>()!;
-
-        logger.LogInformation("Processing job {JobId} for UkPrn {UkPrn} (InstanceId: {InstanceId}).", job.JobId, job.KeyValuePairs.Ukprn, context.InstanceId);
-
-        var fileRef = new IlrFileReference
+        var jobInfo = context.GetInput<JobInfo>()!;
+        var parameters = new Dictionary<string, string>
         {
-            Container = job.KeyValuePairs.Container,
-            Filename = job.KeyValuePairs.Filename
+            { "JobId", jobInfo.JobId.ToString() },
+            { "CorrelationId", context.InstanceId },
         };
+        using var scope = logger.BeginScope(parameters);
+        
+        try
+        {
+            var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), jobInfo);
+            var jobSummary = await RunValidationAsync(context, jobInfo, learners, logger);
+            if (jobSummary.JobFailure)
+            {
+                logger.LogCritical("Job failure signalled by downstream activity");
+                return false;
+            }
 
-        var learners = await context.CallActivityAsync<List<LearnerSummary>>(
-            nameof(DownloadAndParseIlrActivity), fileRef);
+            await WriteJobFilesAsync(context, jobInfo, jobSummary, logger);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex, "Job failed with exception");
+            return false;
+        }
+    }
 
-        logger.LogInformation("Found {LearnerCount} learners in job {JobId} (InstanceId: {InstanceId}).", learners.Count, job.JobId, context.InstanceId);
-
+    private static async Task<JobSummary> RunValidationAsync(TaskOrchestrationContext context, JobInfo jobInfo, List<LearnerSummary> learners, ILogger logger)
+    {
+        logger.LogInformation("Fan out started");
         var subOrchestrations = learners.Select(learner =>
-            context.CallSubOrchestratorAsync<FundingRuleValidationResultMessage>(
+            context.CallSubOrchestratorAsync<ValidationSummary>(
                 nameof(ValidateLearnerOrchestrator),
                 new ValidateLearnerMessage
                 {
-                    JobId = job.JobId,
+                    JobId = jobInfo.JobId,
                     CorrelationId = context.InstanceId,
-                    Ukprn = job.KeyValuePairs.Ukprn,
+                    Ukprn = jobInfo.Ukprn,
                     Uln = learner.LearnRefNumber,
                     DateOfBirth = learner.DateOfBirth,
                     Courses = learner.Courses,
-                    Container = job.KeyValuePairs.Container,
-                    Filename = job.KeyValuePairs.Filename
+                    Container = jobInfo.Container,
+                    Filename = jobInfo.ValidIlrXmlFilename
                 }));
 
-        // all learners are validated regardless of individual pass/fail outcomes;
-        // only an infrastructure exception will cause Task.WhenAll to throw
         var results = await Task.WhenAll(subOrchestrations);
+        logger.LogInformation("Fan in complete");
+        return results.ToJobSummary();
+    }
 
-        var jobComplete = new JobCompleteMessage
+    private static async Task WriteJobFilesAsync(TaskOrchestrationContext context, JobInfo jobInfo, JobSummary jobSummary, ILogger logger)
+    {
+        if (jobSummary.InvalidLearnerRefs is not { Count: > 0 })
         {
-            JobId = job.JobId,
-            Ukprn = job.KeyValuePairs.Ukprn,
-            TotalLearners = results.Length,
-            ValidCount = results.Count(r => r.IsValid),
-            InvalidCount = results.Count(r => !r.IsValid)
+            // nothing to write
+            logger.LogInformation("Job contained no invalid learners, no files to write");
+            return;
+        }
+        
+        logger.LogInformation("Job contained {InvalidLearnerCount} invalid learners", jobSummary.InvalidLearnerRefs.Count);
+        var writeSummaryRequest = new WriteJobResultsRequest
+        {
+            Job = jobInfo,
+            ValidationErrors = jobSummary.Items.SelectMany(x => x.ValidationErrors).ToList(),
+            InvalidLearnerRefs = jobSummary.InvalidLearnerRefs,
+            RuleDescriptions = jobSummary.RuleDescriptions,
         };
-
-        await context.CallActivityAsync(nameof(SendJobCompleteActivity), jobComplete);
-
-        logger.LogInformation("Job {JobId} complete. Valid: {ValidCount}, Invalid: {InvalidCount} (InstanceId: {InstanceId}).",
-            job.JobId, jobComplete.ValidCount, jobComplete.InvalidCount, context.InstanceId);
+        await context.CallActivityAsync(nameof(WriteJobsResultsActivity), writeSummaryRequest);
     }
 }

@@ -9,8 +9,8 @@
         "ResourceEnvironmentName": "LOCAL",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
         "Version": "2.0",
-        "IncomingServiceBusConnection": "Endpoint=sb://localhost:5300;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
-        "ServiceBusConnection": "Endpoint=sb://localhost:5300;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
+        "IncomingServiceBusConnection": "Endpoint=sb://localhost:5672;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
+        "ServiceBusConnection": "Endpoint=sb://localhost:5672;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
         "IlrBlobStorageConnection": "UseDevelopmentStorage=true"
     },
     "Host": {
