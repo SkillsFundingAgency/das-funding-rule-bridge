@@ -40,9 +40,19 @@ public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger):
         await DurableClient.ScheduleNewOrchestrationInstanceAsync(nameof(ProcessJobOrchestrator), jobInfo, new StartOrchestrationOptions(instanceId), cancellationToken);
         logger.LogInformation("{InstanceId}: Started AS validation orchestration", instanceId);
 
-        existingInstance = await DurableClient.WaitForInstanceCompletionAsync(instanceId, true, cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
-        
+        try
+        {
+            while (existingInstance is null)
+            {
+                existingInstance = await WaitForInstance(instanceId);
+            }
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "{InstanceId}: Unhandled exception whilst waiting for job to complete", instanceId);
+            return false;
+        }
+
         if (existingInstance.RuntimeStatus != OrchestrationRuntimeStatus.Completed)
         {
             logger.LogError("{InstanceId}: Job did not complete successfully, status: {FinalStatus}", instanceId, existingInstance.RuntimeStatus);
@@ -57,6 +67,19 @@ public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger):
 
         logger.LogError("{InstanceId}: Job completed successfully but did not contain a JobResult", instanceId);
         return false;
+    }
+
+    private async Task<OrchestrationMetadata?> WaitForInstance(string instanceId)
+    {
+        using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        try
+        {
+            return await DurableClient.WaitForInstanceCompletionAsync(instanceId, cts.Token);
+        }
+        catch (Exception) when (cts.Token.IsCancellationRequested)
+        {
+            return null;
+        }
     }
 
     private static bool TryGetJobResult(OrchestrationMetadata existingInstance, [NotNullWhen(true)]out bool? jobResult)
