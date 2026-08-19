@@ -74,7 +74,7 @@ public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger):
         using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         try
         {
-            return await DurableClient.WaitForInstanceCompletionAsync(instanceId, cts.Token);
+            return await DurableClient.WaitForInstanceCompletionAsync(instanceId, true, cts.Token);
         }
         catch (Exception) when (cts.Token.IsCancellationRequested)
         {
