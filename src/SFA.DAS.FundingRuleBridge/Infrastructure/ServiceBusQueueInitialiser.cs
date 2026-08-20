@@ -7,7 +7,7 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
 
 public class ServiceBusQueueInitialiser(ServiceBusAdministrationClient adminClient, ILogger<ServiceBusQueueInitialiser> logger) : IHostedService
 {
-    private static readonly string[] _queuesToCreate =
+    private static readonly string[] QueuesToCreate =
     [
         QueueConstants.ValidationRequestsQueue,
         QueueConstants.ValidationCallbackQueue
@@ -26,7 +26,7 @@ public class ServiceBusQueueInitialiser(ServiceBusAdministrationClient adminClie
             RequiresSession = false
         };
 
-        foreach (var queueName in _queuesToCreate)
+        foreach (var queueName in QueuesToCreate)
         {
             if (await adminClient.QueueExistsAsync(queueName, cancellationToken))
                 continue;
