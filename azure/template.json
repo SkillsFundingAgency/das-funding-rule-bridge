@@ -177,7 +177,7 @@
                     "aspInstances": {
                         "value": "[parameters('appServicePlanInstances')]"
                     },
-                    "aspTier": {
+                    "nonASETier": {
                         "value": "[parameters('appServicePlanTier')]"
                     }
                 }
