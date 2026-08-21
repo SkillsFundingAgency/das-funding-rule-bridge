@@ -15,25 +15,33 @@ public class ServiceBusQueueInitialiser(ServiceBusAdministrationClient adminClie
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        var options = new CreateQueueOptions(string.Empty)
+        try
         {
-            LockDuration = TimeSpan.FromMinutes(5),
-            DefaultMessageTimeToLive = TimeSpan.FromDays(14),
-            DeadLetteringOnMessageExpiration = true,
-            MaxDeliveryCount = 5,
-            DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
-            RequiresDuplicateDetection = false,
-            RequiresSession = false
-        };
+            var options = new CreateQueueOptions(string.Empty)
+            {
+                LockDuration = TimeSpan.FromMinutes(5),
+                DefaultMessageTimeToLive = TimeSpan.FromDays(14),
+                DeadLetteringOnMessageExpiration = true,
+                MaxDeliveryCount = 5,
+                DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
+                RequiresDuplicateDetection = false,
+                RequiresSession = false
+            };
 
-        foreach (var queueName in QueuesToCreate)
+            foreach (var queueName in QueuesToCreate)
+            {
+                if (await adminClient.QueueExistsAsync(queueName, cancellationToken))
+                    continue;
+
+                options.Name = queueName;
+                await adminClient.CreateQueueAsync(options, cancellationToken);
+                logger.LogInformation("Created Service Bus queue '{QueueName}'", queueName);
+            }
+        }
+        catch (Exception e)
         {
-            if (await adminClient.QueueExistsAsync(queueName, cancellationToken))
-                continue;
-
-            options.Name = queueName;
-            await adminClient.CreateQueueAsync(options, cancellationToken);
-            logger.LogInformation("Created Service Bus queue '{QueueName}'", queueName);
+            logger.LogError(e, "Error creating Service Bus queues");
+            throw;
         }
     }
 
