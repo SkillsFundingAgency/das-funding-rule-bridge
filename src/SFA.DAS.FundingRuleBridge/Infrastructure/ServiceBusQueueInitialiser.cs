@@ -17,24 +17,24 @@ public class ServiceBusQueueInitialiser(ServiceBusAdministrationClient adminClie
     {
         try
         {
-            var options = new CreateQueueOptions(string.Empty)
-            {
-                LockDuration = TimeSpan.FromMinutes(5),
-                DefaultMessageTimeToLive = TimeSpan.FromDays(14),
-                DeadLetteringOnMessageExpiration = true,
-                MaxDeliveryCount = 5,
-                DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
-                RequiresDuplicateDetection = false,
-                RequiresSession = false
-            };
-
             foreach (var queueName in QueuesToCreate)
             {
                 if (await adminClient.QueueExistsAsync(queueName, cancellationToken))
+                {
                     continue;
+                }
 
-                options.Name = queueName;
-                await adminClient.CreateQueueAsync(options, cancellationToken);
+                await adminClient.CreateQueueAsync(new CreateQueueOptions(queueName)
+                {
+                    LockDuration = TimeSpan.FromMinutes(5),
+                    DefaultMessageTimeToLive = TimeSpan.FromDays(14),
+                    DeadLetteringOnMessageExpiration = true,
+                    MaxDeliveryCount = 5,
+                    DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
+                    RequiresDuplicateDetection = false,
+                    RequiresSession = false,
+                    Name = queueName
+                }, cancellationToken);
                 logger.LogInformation("Created Service Bus queue '{QueueName}'", queueName);
             }
         }
