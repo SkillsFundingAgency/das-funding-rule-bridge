@@ -31,7 +31,7 @@ public class ServiceBusQueueInitialiser(ServiceBusAdministrationClient adminClie
                     DeadLetteringOnMessageExpiration = true,
                     MaxDeliveryCount = 5,
                     DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
-                    RequiresDuplicateDetection = false,
+                    RequiresDuplicateDetection = true,
                     RequiresSession = false,
                     Name = queueName
                 }, cancellationToken);
