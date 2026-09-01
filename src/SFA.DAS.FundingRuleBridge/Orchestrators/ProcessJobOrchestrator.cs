@@ -12,6 +12,7 @@ public class ProcessJobOrchestrator
     [Function(nameof(ProcessJobOrchestrator))]
     public static async Task<bool> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
+        var startTime = context.CurrentUtcDateTime;
         var logger = context.CreateReplaySafeLogger<ProcessJobOrchestrator>();
         var jobInfo = context.GetInput<JobInfo>()!;
         var parameters = new Dictionary<string, string>
@@ -20,25 +21,46 @@ public class ProcessJobOrchestrator
             { "CorrelationId", context.InstanceId },
         };
         using var scope = logger.BeginScope(parameters);
-        
         try
         {
             var learners = await context.CallActivityAsync<List<LearnerSummary>>(nameof(DownloadAndParseIlrActivity), jobInfo);
             var jobSummary = await RunValidationAsync(context, jobInfo, learners, logger);
             if (jobSummary.JobFailure)
             {
-                logger.LogCritical("Job failure signalled by downstream activity");
+                LogFailure(logger, "Signalled failure by validation engine");
                 return false;
             }
 
             await WriteJobFilesAsync(context, jobInfo, jobSummary, logger);
+            LogCompletion(logger, startTime, context.CurrentUtcDateTime, jobSummary);
             return true;
         }
         catch (Exception ex)
         {
-            logger.LogCritical(ex, "Job failed with exception");
+            LogFailure(logger, "An exception occurred", ex);
             return false;
         }
+    }
+
+    private static void LogCompletion(ILogger logger, DateTime startTime, DateTime endTime, JobSummary jobSummary)
+    {
+        var duration = endTime - startTime;
+        using var _ = logger.BeginScope(new Dictionary<string, string>
+        {
+            { "Duration", $"{duration:G}" },
+            { "ValidLearnerCount", $"{jobSummary.ValidLearnerRefs.Count}" },
+            { "InvalidLearnerCount", $"{jobSummary.InvalidLearnerRefs.Count}" },
+        });
+        logger.LogInformation("{OrchestratorName} completed successfully", nameof(ProcessJobOrchestrator));
+    }
+    
+    private static void LogFailure(ILogger logger, string reason, Exception? ex = null)
+    {
+        using var _ = logger.BeginScope(new Dictionary<string, string>
+        {
+            { "Reason", reason }
+        });
+        logger.LogError(ex, "{OrchestratorName} failed", nameof(ProcessJobOrchestrator));
     }
 
     private static async Task<JobSummary> RunValidationAsync(TaskOrchestrationContext context, JobInfo jobInfo, List<LearnerSummary> learners, ILogger logger)
