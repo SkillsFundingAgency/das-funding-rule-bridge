@@ -19,7 +19,8 @@
         },
         "console": {
             "includeScopes": true
-        }
+        },
+        "includeScopes": true
     },
     "extensions": {
         "serviceBus": {
