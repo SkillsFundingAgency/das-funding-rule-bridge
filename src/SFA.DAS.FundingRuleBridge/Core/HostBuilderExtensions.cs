@@ -57,7 +57,7 @@ public static class HostBuilderExtensions
 
         private FunctionsApplicationBuilder RegisterServices()
         {
-            builder.Services.AddOpenTelemetryRegistration(builder.Configuration.GetValue<string>("APPLICATIONINSIGHTS_CONNECTION_STRING"));
+            builder.AddOpenTelemetryRegistration(builder.Configuration.GetValue<string>("APPLICATIONINSIGHTS_CONNECTION_STRING"));
             return builder;
         }
 
