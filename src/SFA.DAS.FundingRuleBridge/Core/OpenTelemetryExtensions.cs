@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Logs;
 
 namespace SFA.DAS.FundingRuleBridge.Jobs.Core;
 
@@ -15,6 +16,11 @@ public static class OpenTelemetryExtensions
             return;
         }
 
+        services.Configure<OpenTelemetryLoggerOptions>(options =>
+        {
+            options.IncludeScopes = true;
+        });
+        
         services
             .AddOpenTelemetry()
             .UseFunctionsWorkerDefaults()
