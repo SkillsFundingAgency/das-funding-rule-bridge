@@ -57,9 +57,7 @@ public static class HostBuilderExtensions
 
         private FunctionsApplicationBuilder RegisterServices()
         {
-            builder.Services.AddOpenTelemetry().UseAzureMonitor(opt => {
-                opt.ConnectionString = builder.Configuration.GetValue<string>("APPLICATIONINSIGHTS_CONNECTION_STRING");
-            });
+            builder.Services.AddOpenTelemetryRegistration(builder.Configuration.GetValue<string>("APPLICATIONINSIGHTS_CONNECTION_STRING"));
             return builder;
         }
 

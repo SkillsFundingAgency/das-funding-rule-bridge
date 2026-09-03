@@ -14,8 +14,10 @@ public static class OpenTelemetryExtensions
         {
             return;
         }
-        
-        services.AddOpenTelemetry().UseFunctionsWorkerDefaults();
-        services.AddOpenTelemetry().UseAzureMonitorExporter(options => { options.ConnectionString = connectionString; });
+
+        services
+            .AddOpenTelemetry()
+            .UseFunctionsWorkerDefaults()
+            .UseAzureMonitorExporter(opt => opt.ConnectionString = connectionString);
     }
 }
