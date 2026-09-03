@@ -21,7 +21,10 @@ public static class OpenTelemetryExtensions
             return;
         }
 
+        builder.Logging.AddOpenTelemetry(opt =>
+        {
+            opt.IncludeScopes = true;
+        });
         builder.Services.AddOpenTelemetry().UseAzureMonitor(opt => opt.ConnectionString = connectionString);
-        builder.Logging.AddOpenTelemetry(opt => opt.IncludeScopes = true);
     }
 }
