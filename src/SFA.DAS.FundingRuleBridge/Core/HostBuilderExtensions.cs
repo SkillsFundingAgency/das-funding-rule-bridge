@@ -3,6 +3,8 @@ using System.Xml.Serialization;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using DC.ILR.Model;
 using ESFA.DC.Auditing.Interface;
 using ESFA.DC.JobContext.Interface;
@@ -55,8 +57,9 @@ public static class HostBuilderExtensions
 
         private FunctionsApplicationBuilder RegisterServices()
         {
-            builder.Logging.AddOpenTelemetry(opt => opt.IncludeScopes = true);
-            builder.Services.AddOpenTelemetryRegistration(builder.Configuration.GetValue<string>("APPLICATIONINSIGHTS_CONNECTION_STRING"));
+            builder.Services.AddOpenTelemetry().UseAzureMonitor(opt => {
+                opt.ConnectionString = builder.Configuration.GetValue<string>("APPLICATIONINSIGHTS_CONNECTION_STRING");
+            });
             return builder;
         }
 
