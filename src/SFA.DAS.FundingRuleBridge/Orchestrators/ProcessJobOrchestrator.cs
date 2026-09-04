@@ -15,10 +15,10 @@ public class ProcessJobOrchestrator
         var startTime = context.CurrentUtcDateTime;
         var logger = context.CreateReplaySafeLogger<ProcessJobOrchestrator>();
         var jobInfo = context.GetInput<JobInfo>()!;
-        var parameters = new Dictionary<string, string>
+        var parameters = new List<KeyValuePair<string, object?>>
         {
-            { "JobId", jobInfo.JobId.ToString() },
-            { "CorrelationId", context.InstanceId },
+            new ("JobId", jobInfo.JobId),
+            new ("CorrelationId", context.InstanceId),
         };
         using var scope = logger.BeginScope(parameters);
         try
@@ -45,20 +45,20 @@ public class ProcessJobOrchestrator
     private static void LogCompletion(ILogger logger, DateTime startTime, DateTime endTime, JobSummary jobSummary)
     {
         var duration = endTime - startTime;
-        using var _ = logger.BeginScope(new Dictionary<string, string>
+        using var _ = logger.BeginScope(new List<KeyValuePair<string, object?>>
         {
-            { "Duration", $"{duration:G}" },
-            { "ValidLearnerCount", $"{jobSummary.ValidLearnerRefs.Count}" },
-            { "InvalidLearnerCount", $"{jobSummary.InvalidLearnerRefs.Count}" },
+            new ("Duration", $"{duration:G}"),
+            new ("ValidLearnerCount", jobSummary.ValidLearnerRefs.Count),
+            new ("InvalidLearnerCount", jobSummary.InvalidLearnerRefs.Count),
         });
         logger.LogInformation("{OrchestratorName} completed successfully", nameof(ProcessJobOrchestrator));
     }
     
     private static void LogFailure(ILogger logger, string reason, Exception? ex = null)
     {
-        using var _ = logger.BeginScope(new Dictionary<string, string>
+        using var _ = logger.BeginScope(new List<KeyValuePair<string, object?>>
         {
-            { "Reason", reason }
+            new ("Reason", reason)
         });
         logger.LogError(ex, "{OrchestratorName} failed", nameof(ProcessJobOrchestrator));
     }
