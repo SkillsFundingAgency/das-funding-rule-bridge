@@ -16,7 +16,7 @@ public static class OpenTelemetryExtensions
         {
             return;
         }
-
+        
         builder.Services
             .AddOpenTelemetry()
             .UseFunctionsWorkerDefaults()

@@ -17,7 +17,7 @@ public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger):
     
     public async Task<bool> HandleAsync(JobContextMessage message, CancellationToken cancellationToken)
     {
-        using var handlerScope = logger.BeginScope(new Dictionary<string, object> { { "JobId", message.JobId } });
+        using var handlerScope = logger.BeginScope(new List<KeyValuePair<string, object?>> { new ("JobId", message.JobId) });
         logger.LogInformation("Received JobContextMessage");
 
         var count = 1;
@@ -31,7 +31,7 @@ public class JobContextMessageHandler(ILogger<JobContextMessageHandler> logger):
             existingInstance = await DurableClient.GetInstanceAsync(instanceId, cancellationToken);
         }
         
-        using var instanceScope = logger.BeginScope(new Dictionary<string, object> { { "InstanceId", instanceId } });
+        using var instanceScope = logger.BeginScope(new List<KeyValuePair<string, object?>> { new("InstanceId", instanceId) });
 
         if (!TryGetJobInfo(message, logger, out var jobInfo))
         {

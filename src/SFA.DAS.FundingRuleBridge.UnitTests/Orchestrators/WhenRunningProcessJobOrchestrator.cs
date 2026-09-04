@@ -45,9 +45,9 @@ public class WhenRunningProcessJobOrchestrator
         result.Should().BeFalse();
         
         _fakeLogger.LatestRecord.Message.Should().Be("ProcessJobOrchestrator failed");
-        var scope = _fakeLogger.LatestRecord.Scopes[1] as Dictionary<string, string>;
+        var scope = _fakeLogger.LatestRecord.Scopes[1] as List<KeyValuePair<string, object?>>;
         scope.Should().NotBeNull();
-        scope["Reason"].Should().Be("An exception occurred");
+        scope.Should().ContainEquivalentOf(new KeyValuePair<string, object?>("Reason", "An exception occurred"));
     }
     
     [Test, MoqAutoData]
@@ -107,17 +107,17 @@ public class WhenRunningProcessJobOrchestrator
         _fakeLogger.LatestRecord.Message.Should().Be("ProcessJobOrchestrator completed successfully");
         
         // first scope
-        var scope = _fakeLogger.LatestRecord.Scopes[0] as Dictionary<string, string>;
-        scope.Should().ContainEquivalentOf(new KeyValuePair<string, string>("JobId", jobInfo.JobId.ToString()));
-        scope.Should().ContainEquivalentOf(new KeyValuePair<string, string>("CorrelationId", _context.Object.InstanceId));
+        var scope = _fakeLogger.LatestRecord.Scopes[0] as List<KeyValuePair<string, object?>>;
+        scope.Should().ContainEquivalentOf(new KeyValuePair<string, object?>("JobId", jobInfo.JobId));
+        scope.Should().ContainEquivalentOf(new KeyValuePair<string, object?>("CorrelationId", _context.Object.InstanceId));
         
         // second scope
-        scope = _fakeLogger.LatestRecord.Scopes[1] as Dictionary<string, string>;
-        scope.Should().ContainEquivalentOf(new KeyValuePair<string, string>("ValidLearnerCount", "1"));
-        scope.Should().ContainEquivalentOf(new KeyValuePair<string, string>("InvalidLearnerCount", "0"));
+        scope = _fakeLogger.LatestRecord.Scopes[1] as List<KeyValuePair<string, object?>>;
+        scope.Should().ContainEquivalentOf(new KeyValuePair<string, object?>("ValidLearnerCount", 1));
+        scope.Should().ContainEquivalentOf(new KeyValuePair<string, object?>("InvalidLearnerCount", 0));
         
-        scope.Should().ContainKey("Duration");
-        var duration = TimeSpan.Parse(scope["Duration"]);
+        var durationPair = scope.Find(x => x.Key == "Duration");
+        var duration = TimeSpan.Parse(durationPair.Value as string);
         duration.Should().BeCloseTo(TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(100));
     }
 }
