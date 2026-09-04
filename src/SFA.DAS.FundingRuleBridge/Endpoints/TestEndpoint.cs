@@ -10,17 +10,17 @@ public class TestEndpoint(ILogger<TestEndpoint> logger)
     [Function(nameof(TestEndpoint))]
     public async Task Test([TimerTrigger("0 0 29 2 1", RunOnStartup = true)] TimerInfo timer, [DurableClient] DurableTaskClient durableClient)
     {
-        var parameters = new Dictionary<string, object?>
+        var parameters = new List<KeyValuePair<string, object?>>
         {
-            { "TestId", Guid.NewGuid() }
+            new ("TestId", Guid.NewGuid())
         };
 
         using var _ = logger.BeginScope(parameters);
         logger.LogInformation("Scheduling orchestrator");
 
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(nameof(TestOrchestrator));
-        
-        using (logger.BeginScope(new Dictionary<string, object?> { { "InstanceId", instanceId }, { "TestId", Guid.NewGuid() } }))
+
+        using (logger.BeginScope(new List<KeyValuePair<string, object?>> { new ("InstanceId", instanceId ), new("TestId", Guid.NewGuid()) }))
         {
             logger.LogInformation("Orchestration scheduled");
         }
@@ -32,15 +32,15 @@ public class TestOrchestrator
     public static async Task<bool> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
         var logger = context.CreateReplaySafeLogger<TestOrchestrator>();
-        var parameters = new Dictionary<string, object?>
+        var parameters = new List<KeyValuePair<string, object?>>
         {
-            { "TestId", Guid.NewGuid() }
+            new( "TestId", Guid.NewGuid() )
         };
         
         using var _ = logger.BeginScope(parameters);
         logger.LogInformation("Executing orchestrator");
         
-        using (logger.BeginScope(new Dictionary<string, object?> { { "TestId", Guid.NewGuid() } }))
+        using (logger.BeginScope(new List<KeyValuePair<string, object?>> { new("TestId", Guid.NewGuid()) }))
         {
             logger.LogInformation("Orchestration execution completed");
         }
