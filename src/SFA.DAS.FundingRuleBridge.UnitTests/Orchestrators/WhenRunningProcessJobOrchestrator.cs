@@ -90,7 +90,7 @@ public class WhenRunningProcessJobOrchestrator
             .ReturnsAsync([learnerSummary]);
 
         _context
-            .Setup(x => x.CallSubOrchestratorAsync<ValidationSummary>(nameof(ValidateLearnerOrchestrator), It.IsAny<ValidateLearnerMessage>(), It.IsAny<TaskOptions?>()))
+            .Setup(x => x.CallActivityAsync<ValidationSummary>(nameof(ValidateLearnerActivity), It.IsAny<ValidateLearnerMessage>(), It.IsAny<TaskOptions?>()))
             .ReturnsAsync(value:validationSummary, delay: TimeSpan.FromMilliseconds(200));
 
         _context
