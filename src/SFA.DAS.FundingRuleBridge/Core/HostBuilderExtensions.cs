@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Xml.Serialization;
-using Azure.Data.Tables;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using DC.ILR.Model;
@@ -21,7 +20,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SFA.DAS.FundingRuleBridge.Jobs.Data;
-using SFA.DAS.FundingRuleBridge.Jobs.Data.TableStorage;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Handlers;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
@@ -68,9 +66,7 @@ public static class HostBuilderExtensions
             services.AddSingleton<IIlrBlobStorageClient>(sp => new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
             services.AddSingleton<XmlSerializer>(_ => new XmlSerializer(typeof(Message), GlobalConstants.Ilr2627XmlNamespace));
 
-            services.AddTransient<TableServiceClient>(sp =>
-                new TableServiceClient(sp.GetRequiredService<IConfiguration>()["TableStorageConnectionString"]));
-            services.AddTransient<IRulesRepository, TableStorageRulesRepository>();
+            services.AddSingleton<IRulesRepository, StaticRulesRepository>();
             services.AddTransient<IRuleCheck, CourseAgeRuleCheck>();
 
             return builder;

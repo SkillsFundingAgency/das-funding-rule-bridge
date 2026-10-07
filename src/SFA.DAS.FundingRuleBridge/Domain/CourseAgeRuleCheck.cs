@@ -5,7 +5,9 @@ namespace SFA.DAS.FundingRuleBridge.Jobs.Domain;
 
 public partial class CourseAgeRuleCheck(ILogger<CourseAgeRuleCheck> logger) : IRuleCheck
 {
-    public string Name => "CourseAgeCheckActivity";
+    public const string RuleName = "CourseAgeCheckActivity";
+
+    public string Name => RuleName;
 
     public List<RuleCourseOutcome> Check(RuleData ruleData)
     {

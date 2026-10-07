@@ -11,8 +11,7 @@
         "Version": "2.0",
         "IncomingServiceBusConnection": "Endpoint=sb://localhost:5672;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
         "ServiceBusConnection": "Endpoint=sb://localhost:5672;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
-        "IlrBlobStorageConnection": "UseDevelopmentStorage=true",
-        "TableStorageConnectionString": "UseDevelopmentStorage=true"
+        "IlrBlobStorageConnection": "UseDevelopmentStorage=true"
     },
     "Host": {
         "LocalHttpPort": 7008,
