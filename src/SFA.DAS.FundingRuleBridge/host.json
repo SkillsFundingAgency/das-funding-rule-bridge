@@ -22,9 +22,13 @@
             "maxAutoLockRenewalDuration": "01:00:00"
         },
         "durableTask": {
-            "tracing": {
-                "distributedTracingEnabled": true,
-                "version": "V2"
+            "extendedSessionsEnabled": true, 
+            "extendedSessionIdleTimeoutInSeconds": 10,
+            "maxConcurrentOrchestratorFunctions": 10000000, 
+            "hubName": "FundingRuleBridgeHub",
+            "storageProvider": {
+                "controlQueueBufferThreshold": 1000,  
+                "partitionCount": 16 
             }
         }
     }

@@ -67,8 +67,8 @@ public class ProcessJobOrchestrator
     {
         logger.LogInformation("Fan out started");
         var subOrchestrations = learners.Select(learner =>
-            context.CallSubOrchestratorAsync<ValidationSummary>(
-                nameof(ValidateLearnerOrchestrator),
+            context.CallActivityAsync<ValidationSummary>(
+                nameof(ValidateLearnerActivity),
                 new ValidateLearnerMessage
                 {
                     JobId = jobInfo.JobId,

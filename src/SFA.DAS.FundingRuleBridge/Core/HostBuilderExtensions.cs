@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Xml.Serialization;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
-using Azure.Messaging.ServiceBus.Administration;
 using DC.ILR.Model;
 using ESFA.DC.Auditing.Interface;
 using ESFA.DC.JobContext.Interface;
@@ -20,6 +19,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SFA.DAS.FundingRuleBridge.Jobs.Data;
 using SFA.DAS.FundingRuleBridge.Jobs.Domain;
 using SFA.DAS.FundingRuleBridge.Jobs.Handlers;
 using SFA.DAS.FundingRuleBridge.Jobs.Infrastructure;
@@ -62,32 +62,13 @@ public static class HostBuilderExtensions
         private FunctionsApplicationBuilder RegisterDependencies()
         {
             var services = builder.Services;
-            
-            services.AddKeyedSingleton(
-                typeof(ServiceBusClient),
-                QueueConstants.InternalBusKey,
-                (sp, _) =>
-                {
-                    var config = sp.GetRequiredService<IConfiguration>();
-                    var fqdn = config[$"{QueueConstants.InternalServiceBusConnectionString}:fullyQualifiedNamespace"];
-                    if (fqdn != null)
-                        return new ServiceBusClient(fqdn, new DefaultAzureCredential());
-                    return new ServiceBusClient(config[QueueConstants.InternalServiceBusConnectionString]!);
-                });
-
-            services.AddSingleton<ServiceBusAdministrationClient>(sp =>
-            {
-                var config = sp.GetRequiredService<IConfiguration>();
-                var fqdn = config[$"{QueueConstants.InternalServiceBusConnectionString}:fullyQualifiedNamespace"];
-                if (fqdn != null)
-                    return new ServiceBusAdministrationClient(fqdn, new DefaultAzureCredential());
-                return new ServiceBusAdministrationClient(config[QueueConstants.InternalServiceBusConnectionString]!);
-            });
-
-            services.AddHostedService<ServiceBusQueueInitialiser>();
 
             services.AddSingleton<IIlrBlobStorageClient>(sp => new IlrBlobStorageClient(sp.GetRequiredService<IConfiguration>()["IlrBlobStorageConnection"]!));
             services.AddSingleton<XmlSerializer>(_ => new XmlSerializer(typeof(Message), GlobalConstants.Ilr2627XmlNamespace));
+
+            services.AddSingleton<IRulesRepository, StaticRulesRepository>();
+            services.AddTransient<IRuleCheck, CourseAgeRuleCheck>();
+
             return builder;
         }
         
