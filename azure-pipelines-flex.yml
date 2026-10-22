@@ -1,0 +1,98 @@
+# Flex Consumption hosting (DASD-16646). Runs alongside azure-pipelines.yml and deploys a separate
+# das-<env>-fnrbwkr-flex-fa app; it doesn't touch the existing App Service plan resources.
+# Manual runs only, lower environments only, until the Flex app has been proven in AT.
+trigger: none
+pr: none
+
+variables:
+- name: SolutionBaseName
+  value: SFA.DAS.FundingRuleBridge
+- name: BuildConfiguration
+  value: release
+- name: BuildPlatform
+  value: any cpu
+- group: RELEASE Management Resources
+- group: RELEASE das-funding-rule-bridge
+# Proposed subnet; .233.0/24 is free in the AT, TEST, TEST2 and DEMO vnets. Confirm with the platform team and
+# move to Subnet-fnrbwkr-flex in RELEASE Management Resources before PP/PROD.
+- name: FlexSubnetObject
+  value: '{"name":"fnrbwkr-flex-sn","addressSpace":"$(SharedEnvVirtualNetworkAddressPrefix).233.0/24"}'
+
+resources:
+  repositories:
+  - repository: self
+  - repository: das-platform-building-blocks
+    type: github
+    name: SkillsFundingAgency/das-platform-building-blocks
+    ref: refs/tags/3.0.32
+    endpoint: SkillsFundingAgency
+  - repository: das-platform-automation
+    type: github
+    name: SkillsFundingAgency/das-platform-automation
+    ref: refs/tags/5.1.24
+    endpoint: SkillsFundingAgency
+
+stages:
+- stage: Build
+  jobs:
+  - template: pipeline-templates/job/code-build.yml
+    parameters:
+      SolutionBaseName: $(SolutionBaseName)
+      BuildConfiguration: $(BuildConfiguration)
+      AzureArtifactsFeed: dct-pkg
+
+- stage: Deploy_Flex_AT
+  dependsOn: Build
+  displayName: Deploy Flex to AT
+  variables:
+  - group: DevTest Management Resources
+  - group: AT DevTest Shared Resources
+  - group: AT das-funding-rule-bridge
+  jobs:
+  - template: pipeline-templates/job/deploy-flex.yml
+    parameters:
+      Environment: AT
+      SolutionBaseName: $(SolutionBaseName)
+      ServiceConnection: SFA-DAS-DevTest-ARM
+
+- stage: Deploy_Flex_TEST
+  dependsOn: Build
+  displayName: Deploy Flex to TEST
+  variables:
+  - group: DevTest Management Resources
+  - group: TEST DevTest Shared Resources
+  - group: TEST das-funding-rule-bridge
+  jobs:
+  - template: pipeline-templates/job/deploy-flex.yml
+    parameters:
+      Environment: TEST
+      SolutionBaseName: $(SolutionBaseName)
+      ServiceConnection: SFA-DAS-DevTest-ARM
+
+- stage: Deploy_Flex_TEST2
+  dependsOn: Build
+  displayName: Deploy Flex to TEST2
+  variables:
+  - group: DevTest Management Resources
+  - group: TEST2 DevTest Shared Resources
+  - group: TEST2 das-funding-rule-bridge
+  jobs:
+  - template: pipeline-templates/job/deploy-flex.yml
+    parameters:
+      Environment: TEST2
+      SolutionBaseName: $(SolutionBaseName)
+      ServiceConnection: SFA-DAS-DevTest-ARM
+
+- stage: Deploy_Flex_DEMO
+  dependsOn: Build
+  displayName: Deploy Flex to DEMO
+  variables:
+  - group: DevTest Management Resources
+  - group: DEMO DevTest Shared Resources
+  - group: DEMO das-funding-rule-bridge
+  jobs:
+  - template: pipeline-templates/job/deploy-flex.yml
+    parameters:
+      Environment: DEMO
+      SolutionBaseName: $(SolutionBaseName)
+      ServiceConnection: SFA-DAS-DevTest-ARM
