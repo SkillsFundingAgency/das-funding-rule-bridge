@@ -13,6 +13,8 @@ variables:
   value: any cpu
 - group: RELEASE Management Resources
 - group: RELEASE das-funding-rule-bridge
+- name: Deploy
+  value: $[or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.Reason'], 'Manual'), eq(variables['Build.Reason'], 'PullRequest'))]
 
 resources:
   repositories:
@@ -27,6 +29,11 @@ resources:
     name: SkillsFundingAgency/das-platform-automation
     ref: refs/tags/5.1.24
     endpoint: SkillsFundingAgency
+  pipelines:
+  - pipeline: das-employer-config
+    project: Digital Apprenticeship Service
+    source: das-employer-config
+    branch: master
 
 stages:
 - stage: Build
@@ -37,9 +44,10 @@ stages:
       BuildConfiguration: $(BuildConfiguration)
       AzureArtifactsFeed: dct-pkg
 
-- stage: Deploy_Flex_AT
+- stage: Deploy_AT
   dependsOn: Build
-  displayName: Deploy Flex to AT
+  displayName: Deploy to AT
+  condition: and(succeeded(), eq(variables.Deploy, 'true'))
   variables:
   - group: DevTest Management Resources
   - group: AT DevTest Shared Resources
@@ -51,9 +59,10 @@ stages:
       SolutionBaseName: $(SolutionBaseName)
       ServiceConnection: SFA-DAS-DevTest-ARM
 
-- stage: Deploy_Flex_TEST
+- stage: Deploy_TEST
   dependsOn: Build
-  displayName: Deploy Flex to TEST
+  displayName: Deploy to TEST
+  condition: and(succeeded(), eq(variables.Deploy, 'true'))
   variables:
   - group: DevTest Management Resources
   - group: TEST DevTest Shared Resources
@@ -65,9 +74,10 @@ stages:
       SolutionBaseName: $(SolutionBaseName)
       ServiceConnection: SFA-DAS-DevTest-ARM
 
-- stage: Deploy_Flex_TEST2
+- stage: Deploy_TEST2
   dependsOn: Build
-  displayName: Deploy Flex to TEST2
+  displayName: Deploy to TEST2
+  condition: and(succeeded(), eq(variables.Deploy, 'true'))
   variables:
   - group: DevTest Management Resources
   - group: TEST2 DevTest Shared Resources
@@ -79,9 +89,55 @@ stages:
       SolutionBaseName: $(SolutionBaseName)
       ServiceConnection: SFA-DAS-DevTest-ARM
 
-- stage: Deploy_Flex_DEMO
+- stage: Deploy_PP
   dependsOn: Build
-  displayName: Deploy Flex to DEMO
+  displayName: Deploy to PP
+  condition: and(succeeded(), eq(variables.Deploy, 'true'))
+  variables:
+  - group: PreProd Management Resources
+  - group: PreProd Shared Resources
+  - group: PreProd das-funding-rule-bridge
+  jobs:
+  - template: pipeline-templates/job/deploy.yml
+    parameters:
+      Environment: PP
+      SolutionBaseName: $(SolutionBaseName)
+      ServiceConnection: SFA-DIG-PreProd-ARM
+
+- stage: Deploy_PROD
+  dependsOn: Build
+  displayName: Deploy to PROD
+  condition: and(succeeded(), eq(variables.Deploy, 'true'))
+  variables:
+  - group: PROD Management Resources
+  - group: PROD Shared Resources
+  - group: PROD das-funding-rule-bridge
+  jobs:
+  - template: pipeline-templates/job/deploy.yml
+    parameters:
+      Environment: PROD
+      SolutionBaseName: $(SolutionBaseName)
+      ServiceConnection: SFA-DIG-Prod-ARM
+
+- stage: Deploy_MO
+  dependsOn: Build
+  displayName: Deploy to MO
+  condition: and(succeeded(), eq(variables.Deploy, 'true'))
+  variables:
+  - group: MO Management Resources
+  - group: MO Shared Resources
+  - group: MO das-funding-rule-bridge
+  jobs:
+  - template: pipeline-templates/job/deploy.yml
+    parameters:
+      Environment: MO
+      SolutionBaseName: $(SolutionBaseName)
+      ServiceConnection: SFA-ASM-ModelOffice-ARM
+
+- stage: Deploy_DEMO
+  dependsOn: Build
+  displayName: Deploy to DEMO
+  condition: and(succeeded(), eq(variables.Deploy, 'true'))
   variables:
   - group: DevTest Management Resources
   - group: DEMO DevTest Shared Resources
