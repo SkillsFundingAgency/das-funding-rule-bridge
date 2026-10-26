@@ -23,9 +23,6 @@
         "loggingRedisKey": {
             "type": "string"
         },
-        "incomingServiceBusConnectionString": {
-            "type": "securestring"
-        },
         "deployPrivateLinkedScopedResource": {
             "type": "bool"
         },
@@ -56,6 +53,9 @@
         "sharedEnvVirtualNetworkName": {
             "type": "string"
         },
+        "subnetObject": {
+            "type": "object"
+        },
         "subnetServiceEndpointList": {
             "type": "array"
         },
@@ -76,14 +76,14 @@
         "SharedServiceBusFqdn": {
             "type": "string"
         },
-        "subnetObject": {
-            "type": "object"
+        "incomingServiceBusConnectionString": {
+            "type": "securestring"
         },
         "flexMaximumInstanceCount": {
             "type": "int",
             "defaultValue": 20,
             "metadata": {
-                "description": "Maximum on-demand instances per function scale group (1-1000)."
+                "description": "Maximum on-demand instances per-function scale group (1-1000)."
             }
         },
         "flexInstanceMemoryMB": {
@@ -94,14 +94,14 @@
             "type": "int",
             "defaultValue": 0,
             "metadata": {
-                "description": "Always ready instances for the durable scale group. Microsoft recommends 1 for Durable Functions on Flex; 0 keeps lower environments scale-to-zero."
+                "description": "Always-ready instances per scale group. Default is 0, so the app cold-starts with no idle cost"
             }
         },
         "flexTriggersEnabled": {
             "type": "bool",
             "defaultValue": false,
             "metadata": {
-                "description": "When false, the Service Bus triggers are disabled so this app doesn't compete with the existing App Service plan app for messages. Set to true at cutover, after stopping the existing app."
+                "description": "When false, Service Bus triggers are disabled to avoid competing with the existing app"
             }
         }
     },
