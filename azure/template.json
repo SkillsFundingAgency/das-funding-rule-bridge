@@ -88,37 +88,13 @@
         },
         "flexInstanceMemoryMB": {
             "type": "int",
-            "defaultValue": 2048,
-            "metadata": {
-                "description": "Instance memory size: 512, 2048 or 4096."
-            }
+            "defaultValue": 2048
         },
         "flexAlwaysReadyDurableInstances": {
             "type": "int",
             "defaultValue": 0,
             "metadata": {
                 "description": "Always ready instances for the durable scale group. Microsoft recommends 1 for Durable Functions on Flex; 0 keeps lower environments scale-to-zero."
-            }
-        },
-        "flexServiceBusMaxConcurrentCalls": {
-            "type": "int",
-            "defaultValue": 16,
-            "metadata": {
-                "description": "Target executions per instance for Service Bus triggers (target-based scaling)."
-            }
-        },
-        "flexDurablePartitionCount": {
-            "type": "int",
-            "defaultValue": 16,
-            "metadata": {
-                "description": "Durable task hub control queue partitions (1-16). Can't be changed once the task hub exists."
-            }
-        },
-        "flexDurableMaxQueuePollingInterval": {
-            "type": "string",
-            "defaultValue": "00:00:10",
-            "metadata": {
-                "description": "Durable queue polling interval. Microsoft recommends 10 seconds or less on Flex."
             }
         },
         "flexTriggersEnabled": {
@@ -364,22 +340,6 @@
                                 {
                                     "name": "IncomingServiceBusConnection",
                                     "value": "[parameters('incomingServiceBusConnectionString')]"
-                                },
-                                {
-                                    "name": "AzureFunctionsJobHost__functionTimeout",
-                                    "value": "01:00:00"
-                                },
-                                {
-                                    "name": "AzureFunctionsJobHost__extensions__serviceBus__maxConcurrentCalls",
-                                    "value": "[string(parameters('flexServiceBusMaxConcurrentCalls'))]"
-                                },
-                                {
-                                    "name": "AzureFunctionsJobHost__extensions__durableTask__storageProvider__partitionCount",
-                                    "value": "[string(parameters('flexDurablePartitionCount'))]"
-                                },
-                                {
-                                    "name": "AzureFunctionsJobHost__extensions__durableTask__storageProvider__maxQueuePollingInterval",
-                                    "value": "[parameters('flexDurableMaxQueuePollingInterval')]"
                                 },
                                 {
                                     "name": "AzureWebJobs.JobContextMessageEndpoint.Disabled",
