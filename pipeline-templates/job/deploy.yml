@@ -43,12 +43,11 @@ jobs:
             ConfigurationSecrets:
               IlrBlobStorageConnection: $(IlrBlobStorageConnection)
               IncomingServiceBusConnection: $(IncomingServiceBusConnection)
+              NServiceBusLicense: $(NServiceBusLicense)
               ServiceBusConnectionString: $(ServiceBusConnectionString)
-        - task: AzureFunctionApp@2
-          displayName: Azure Function App Deploy (Flex Consumption) - $(FunctionAppName)
-          inputs:
-            azureSubscription: ${{ parameters.ServiceConnection }}
-            appType: functionAppLinux
-            isFlexConsumption: true
-            appName: $(FunctionAppName)
-            package: $(Pipeline.Workspace)/${{ parameters.SolutionBaseName }}/${{ parameters.SolutionBaseName }}.zip
+              SqlConnectionStringAdAuth: $(SqlConnectionStringAdAuth)
+        - template: azure-pipelines-templates/deploy/step/function-deploy-flex.yml@das-platform-building-blocks
+          parameters:
+            ServiceConnection: ${{ parameters.ServiceConnection }}
+            FunctionAppName: $(FunctionAppName)
+            DeploymentPackagePath: $(Pipeline.Workspace)/${{ parameters.SolutionBaseName }}/${{ parameters.SolutionBaseName }}.zip
