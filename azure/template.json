@@ -32,9 +32,6 @@
         "resourceGroupLocation": {
             "type": "string"
         },
-        "sharedStorageAccountConnectionString": {
-            "type": "securestring"
-        },
         "sharedManagementResourceGroup": {
             "type": "string"
         },
@@ -62,23 +59,8 @@
         "subnetServiceEndpointList": {
             "type": "array"
         },
-        "subnetDelegations": {
-            "type": "array"
-        },
         "workerAccessRestrictions": {
             "type": "array"
-        },
-        "appServicePlanInstances": {
-            "type": "int",
-            "defaultValue": 1
-        },
-        "appServicePlanSize": {
-            "type": "string",
-            "defaultValue": "1"
-        },
-        "appServicePlanTier": {
-            "type": "string",
-            "defaultValue": "Standard"
         },
         "EnableRouteTableAssociation": {
             "type": "bool",
@@ -96,20 +78,55 @@
         },
         "incomingServiceBusConnectionString": {
             "type": "securestring"
+        },
+        "flexMaximumInstanceCount": {
+            "type": "int",
+            "defaultValue": 20,
+            "metadata": {
+                "description": "Maximum on-demand instances per-function scale group (1-1000)."
+            }
+        },
+        "flexInstanceMemoryMB": {
+            "type": "int",
+            "defaultValue": 2048
+        },
+        "flexAlwaysReadyDurableInstances": {
+            "type": "int",
+            "defaultValue": 0,
+            "metadata": {
+                "description": "Always-ready instances per scale group. Default is 0, so the app cold-starts with no idle cost"
+            }
+        },
+        "flexTriggersEnabled": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "When false, Service Bus triggers are disabled to avoid competing with the existing app"
+            }
         }
     },
     "variables": {
-        "deploymentUrlBase": "https://raw.githubusercontent.com/SkillsFundingAgency/das-platform-building-blocks/master/templates/",
-        "resourceNamePrefix": "[toLower(concat('das-', parameters('resourceEnvironmentName'),'-', parameters('serviceName')))]",
+        "deploymentUrlBase": "https://raw.githubusercontent.com/SkillsFundingAgency/das-platform-building-blocks/DASD-16646/templates/",
+        "resourceNamePrefix": "[toLower(concat('das-', parameters('resourceEnvironmentName'),'-', parameters('serviceName'), 'alt'))]",
         "resourceGroupName": "[concat(variables('resourceNamePrefix'), '-rg')]",
         "functionAppName": "[concat(variables('resourceNamePrefix'), '-fa')]",
         "appServicePlanName": "[concat(variables('resourceNamePrefix'), '-asp')]",
+        "storageAccountName": "[toLower(replace(concat(variables('resourceNamePrefix'), 'str'), '-', ''))]",
         "privateLinkScopeName": "[toLower(concat('das-', parameters('resourceEnvironmentName'),'-shared-ampls'))]",
         "configNames": "SFA.DAS.FundingRuleBridge.Jobs",
+        "subnetDelegations": [
+            {
+                "name": "Microsoft.App.environments",
+                "properties": {
+                    "serviceName": "Microsoft.App/environments"
+                }
+            }
+        ],
         "routeTableId": {
             "id": "[resourceId(subscription().subscriptionId, parameters('sharedEnvResourceGroup'), 'Microsoft.Network/routeTables', parameters('SharedRouteTableName'))]"
         },
-        "emptyObject": {}
+        "emptyObject": {},
+        "alwaysReady": "[if(greater(parameters('flexAlwaysReadyDurableInstances'), 0), createArray(createObject('name', 'durable', 'instanceCount', parameters('flexAlwaysReadyDurableInstances'))), createArray())]"
     },
     "resources": [
         {
@@ -145,40 +162,10 @@
                         "value": "[parameters('subnetServiceEndpointList')]"
                     },
                     "delegations": {
-                        "value": "[parameters('subnetDelegations')]"
+                        "value": "[variables('subnetDelegations')]"
                     },
                     "routeTable": {
                         "value": "[if(parameters('EnableRouteTableAssociation'), variables('routeTableId'), variables('emptyObject'))]"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[variables('resourceGroupName')]"
-            ]
-        },
-        {
-            "apiVersion": "2021-04-01",
-            "name": "[concat(variables('appServicePlanName'), '-', parameters('utcValue'))]",
-            "type": "Microsoft.Resources/deployments",
-            "resourceGroup": "[variables('resourceGroupName')]",
-            "properties": {
-                "mode": "Incremental",
-                "templateLink": {
-                    "uri": "[concat(variables('deploymentUrlBase'),'app-service-plan.json')]",
-                    "contentVersion": "1.0.0.0"
-                },
-                "parameters": {
-                    "appServicePlanName": {
-                        "value": "[variables('appServicePlanName')]"
-                    },
-                    "aspSize": {
-                        "value": "[parameters('appServicePlanSize')]"
-                    },
-                    "aspInstances": {
-                        "value": "[parameters('appServicePlanInstances')]"
-                    },
-                    "nonASETier": {
-                        "value": "[parameters('appServicePlanTier')]"
                     }
                 }
             },
@@ -240,30 +227,72 @@
         },
         {
             "apiVersion": "2021-04-01",
+            "name": "[concat(variables('storageAccountName'), '-', parameters('utcValue'))]",
+            "type": "Microsoft.Resources/deployments",
+            "resourceGroup": "[variables('resourceGroupName')]",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[concat(variables('deploymentUrlBase'),'storage-account-arm.json')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "storageAccountName": {
+                        "value": "[variables('storageAccountName')]"
+                    },
+                    "storageAccountLocation": {
+                        "value": "[parameters('resourceGroupLocation')]"
+                    },
+                    "accountType": {
+                        "value": "Standard_LRS"
+                    },
+                    "storageKind": {
+                        "value": "StorageV2"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[variables('resourceGroupName')]"
+            ]
+        },
+        {
+            "apiVersion": "2021-04-01",
             "name": "[concat(variables('functionAppName'), '-', parameters('utcValue'))]",
             "type": "Microsoft.Resources/deployments",
             "resourceGroup": "[variables('resourceGroupName')]",
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
-                    "uri": "[concat(variables('deploymentUrlBase'),'function-app-v2.json')]",
+                    "uri": "[concat(variables('deploymentUrlBase'),'function-app-flex.json')]",
                     "contentVersion": "1.0.0.0"
                 },
                 "parameters": {
                     "functionAppName": {
                         "value": "[variables('functionAppName')]"
                     },
-                    "appServicePlanName": {
+                    "flexConsumptionPlanName": {
                         "value": "[variables('appServicePlanName')]"
                     },
-                    "appServicePlanResourceGroup": {
-                        "value": "[variables('resourceGroupName')]"
-                    },
-                    "netFrameworkVersion": {
-                        "value": "v10.0"
+                    "flexStorageAccountName": {
+                        "value": "[variables('storageAccountName')]"
                     },
                     "subnetResourceId": {
                         "value": "[reference(concat(parameters('subnetObject').name, '-', parameters('utcValue'))).outputs.SubnetResourceId.value]"
+                    },
+                    "ipSecurityRestrictions": {
+                        "value": "[parameters('workerAccessRestrictions')]"
+                    },
+                    "vnetRouteAllEnabled": {
+                        "value": "[parameters('vnetRouteAllEnabled')]"
+                    },
+                    "maximumInstanceCount": {
+                        "value": "[parameters('flexMaximumInstanceCount')]"
+                    },
+                    "instanceMemoryMB": {
+                        "value": "[parameters('flexInstanceMemoryMB')]"
+                    },
+                    "alwaysReady": {
+                        "value": "[variables('alwaysReady')]"
                     },
                     "functionAppAppSettings": {
                         "value": {
@@ -290,7 +319,15 @@
                                 },
                                 {
                                     "name": "AzureWebJobsStorage",
-                                    "value": "[parameters('sharedStorageAccountConnectionString')]"
+                                    "value": "[reference(concat(variables('storageAccountName'), '-', parameters('utcValue'))).outputs.storageConnectionString.value]"
+                                },
+                                {
+                                    "name": "AzureWebJobsServiceBus__fullyQualifiedNamespace",
+                                    "value": "[parameters('SharedServiceBusFqdn')]"
+                                },
+                                {
+                                    "name": "ServiceBusConnection__fullyQualifiedNamespace",
+                                    "value": "[parameters('SharedServiceBusFqdn')]"
                                 },
                                 {
                                     "name": "LoggingRedisConnectionString",
@@ -301,43 +338,27 @@
                                     "value": "[parameters('loggingRedisKey')]"
                                 },
                                 {
-                                    "name": "FUNCTIONS_EXTENSION_VERSION",
-                                    "value": "~4"
-                                },
-                                {
-                                    "name": "FUNCTIONS_WORKER_RUNTIME",
-                                    "value": "dotnet-isolated"
-                                },
-                                {
-                                    "name": "AzureWebJobsServiceBus__fullyQualifiedNamespace",
-                                    "value": "[parameters('SharedServiceBusFqdn')]"
-                                },
-                                {
-                                    "name": "WEBSITE_RUN_FROM_PACKAGE",
-                                    "value": "1"
-                                },
-                                {
-                                    "name": "ServiceBusConnection__fullyQualifiedNamespace",
-                                    "value": "[parameters('sharedServiceBusFqdn')]"
-                                },
-                                {
                                     "name": "IncomingServiceBusConnection",
                                     "value": "[parameters('incomingServiceBusConnectionString')]"
+                                },
+                                {
+                                    "name": "AzureWebJobs.JobContextMessageEndpoint.Disabled",
+                                    "value": "[if(parameters('flexTriggersEnabled'), 'false', 'true')]"
+                                },
+                                {
+                                    "name": "AzureWebJobs.ValidateLearnerCallbackTrigger.Disabled",
+                                    "value": "[if(parameters('flexTriggersEnabled'), 'false', 'true')]"
                                 }
                             ]
                         }
-                    },
-                    "ipSecurityRestrictions": {
-                        "value": "[parameters('workerAccessRestrictions')]"
-                    },
-                    "vnetRouteAllEnabled": {
-                        "value": "[parameters('vnetRouteAllEnabled')]"
                     }
                 }
             },
             "dependsOn": [
                 "[variables('resourceGroupName')]",
-                "[concat(variables('appServicePlanName'), '-', parameters('utcValue'))]"
+                "[concat(parameters('subnetObject').name, '-', parameters('utcValue'))]",
+                "[concat(variables('functionAppName'), '-application-insights-', parameters('utcValue'))]",
+                "[concat(variables('storageAccountName'), '-', parameters('utcValue'))]"
             ]
         },
         {
@@ -362,7 +383,34 @@
             ]
         },
         {
-            "apiVersion": "2020-06-01",
+            "apiVersion": "2021-04-01",
+            "name": "[concat(variables('functionAppName'), '-storage-role-assignment-', parameters('utcValue'))]",
+            "type": "Microsoft.Resources/deployments",
+            "resourceGroup": "[variables('resourceGroupName')]",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[concat(variables('deploymentUrlBase'),'role-assignments/role-assignment-storage-account.json')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "principalId": {
+                        "value": "[reference(concat(variables('functionAppName'), '-', parameters('utcValue'))).outputs.managedServiceIdentityId.value]"
+                    },
+                    "assignmentType": {
+                        "value": "StorageBlobDataContributor"
+                    },
+                    "resourceName": {
+                        "value": "[variables('storageAccountName')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('functionAppName'), '-', parameters('utcValue'))]"
+            ]
+        },
+        {
+            "apiVersion": "2021-04-01",
             "name": "[concat(variables('functionAppName'), '-role-assignment-', parameters('utcValue'))]",
             "type": "Microsoft.Resources/deployments",
             "resourceGroup": "[parameters('sharedEnvResourceGroup')]",
@@ -397,6 +445,10 @@
         "FunctionAppName": {
             "type": "string",
             "value": "[variables('functionAppName')]"
+        },
+        "StorageAccountName": {
+            "type": "string",
+            "value": "[variables('storageAccountName')]"
         }
     }
 }
