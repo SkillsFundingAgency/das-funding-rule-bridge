@@ -273,7 +273,7 @@
                     "flexConsumptionPlanName": {
                         "value": "[variables('appServicePlanName')]"
                     },
-                    "storageAccountName": {
+                    "flexStorageAccountName": {
                         "value": "[variables('storageAccountName')]"
                     },
                     "subnetResourceId": {
