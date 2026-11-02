@@ -116,6 +116,13 @@
         },
         "durableTaskSchedulerIpAllowlist": {
             "type": "array"
+        },
+        "durableTaskSchedulerPublicNetworkAccess": {
+            "type": "string",
+            "allowedValues": [
+                "Enabled",
+                "Disabled"
+            ]
         }
     },
     "variables": {
@@ -296,6 +303,9 @@
                     },
                     "schedulerIpAllowlist": {
                         "value": "[parameters('durableTaskSchedulerIpAllowlist')]"
+                    },
+                    "schedulerPublicNetworkAccess": {
+                        "value": "[parameters('durableTaskSchedulerPublicNetworkAccess')]"
                     }
                 }
             }
