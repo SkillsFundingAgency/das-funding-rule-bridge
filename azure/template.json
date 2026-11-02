@@ -81,7 +81,7 @@
         },
         "flexMaximumInstanceCount": {
             "type": "int",
-            "defaultValue": 20,
+            "defaultValue": 2,
             "metadata": {
                 "description": "Maximum instance count for each individual function"
             }
