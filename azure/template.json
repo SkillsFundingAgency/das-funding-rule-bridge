@@ -108,21 +108,8 @@
                 "description": "When false, Service Bus triggers are disabled to avoid competing with the existing app"
             }
         },
-        "durableTaskSchedulerSkuName": {
+        "durableTaskSchedulerResourceGroupName": {
             "type": "string"
-        },
-        "durableTaskSchedulerSkuCapacity": {
-            "type": "int"
-        },
-        "durableTaskSchedulerIpAllowlist": {
-            "type": "array"
-        },
-        "durableTaskSchedulerPublicNetworkAccess": {
-            "type": "string",
-            "allowedValues": [
-                "Enabled",
-                "Disabled"
-            ]
         }
     },
     "variables": {
@@ -133,7 +120,7 @@
         "appServicePlanName": "[concat(variables('resourceNamePrefix'), '-asp')]",
         "storageAccountName": "[toLower(replace(concat(variables('resourceNamePrefix'), 'str'), '-', ''))]",
         "privateLinkScopeName": "[toLower(concat('das-', parameters('resourceEnvironmentName'),'-shared-ampls'))]",
-        "durableTaskSchedulerName": "[toLower(concat('das-', parameters('resourceEnvironmentName'),'-shared-dts'))]",
+        "durableTaskSchedulerName": "[toLower(concat('das-', parameters('resourceEnvironmentName'),'-fnr-dts'))]",
         "taskHubName": "[concat(variables('resourceNamePrefix'), '-th')]",
         "configNames": "SFA.DAS.FundingRuleBridge.Jobs",
         "subnetDelegations": [
@@ -279,13 +266,13 @@
         },
         {
             "apiVersion": "2021-04-01",
-            "name": "[concat(variables('functionAppName'), '-dts-', parameters('utcValue'))]",
+            "name": "[concat(variables('functionAppName'), '-th-', parameters('utcValue'))]",
             "type": "Microsoft.Resources/deployments",
-            "resourceGroup": "[parameters('sharedEnvResourceGroup')]",
+            "resourceGroup": "[parameters('durableTaskSchedulerResourceGroupName')]",
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
-                    "uri": "[concat(variables('deploymentUrlBase'),'durable-task-scheduler.json')]",
+                    "uri": "[concat(variables('deploymentUrlBase'),'durable-task-scheduler-task-hub.json')]",
                     "contentVersion": "1.0.0.0"
                 },
                 "parameters": {
@@ -294,18 +281,6 @@
                     },
                     "taskHubName": {
                         "value": "[variables('taskHubName')]"
-                    },
-                    "schedulerSkuName": {
-                        "value": "[parameters('durableTaskSchedulerSkuName')]"
-                    },
-                    "schedulerSkuCapacity": {
-                        "value": "[parameters('durableTaskSchedulerSkuCapacity')]"
-                    },
-                    "schedulerIpAllowlist": {
-                        "value": "[parameters('durableTaskSchedulerIpAllowlist')]"
-                    },
-                    "schedulerPublicNetworkAccess": {
-                        "value": "[parameters('durableTaskSchedulerPublicNetworkAccess')]"
                     }
                 }
             }
@@ -378,7 +353,7 @@
                                 },
                                 {
                                     "name": "DURABLE_TASK_SCHEDULER_CONNECTION_STRING",
-                                    "value": "[concat('Endpoint=', reference(concat(variables('functionAppName'), '-dts-', parameters('utcValue'))).outputs.SchedulerEndpoint.value, ';Authentication=ManagedIdentity')]"
+                                    "value": "[concat('Endpoint=', reference(concat(variables('functionAppName'), '-th-', parameters('utcValue'))).outputs.SchedulerEndpoint.value, ';Authentication=ManagedIdentity')]"
                                 },
                                 {
                                     "name": "TASKHUB_NAME",
@@ -426,7 +401,7 @@
                 "[concat(parameters('subnetObject').name, '-', parameters('utcValue'))]",
                 "[concat(variables('functionAppName'), '-application-insights-', parameters('utcValue'))]",
                 "[concat(variables('storageAccountName'), '-', parameters('utcValue'))]",
-                "[concat(variables('functionAppName'), '-dts-', parameters('utcValue'))]"
+                "[concat(variables('functionAppName'), '-th-', parameters('utcValue'))]"
             ]
         },
         {
@@ -508,7 +483,7 @@
             "apiVersion": "2021-04-01",
             "name": "[concat(variables('functionAppName'), '-dts-role-assignment-', parameters('utcValue'))]",
             "type": "Microsoft.Resources/deployments",
-            "resourceGroup": "[parameters('sharedEnvResourceGroup')]",
+            "resourceGroup": "[parameters('durableTaskSchedulerResourceGroupName')]",
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
@@ -529,7 +504,7 @@
             },
             "dependsOn": [
                 "[concat(variables('functionAppName'), '-', parameters('utcValue'))]",
-                "[concat(variables('functionAppName'), '-dts-', parameters('utcValue'))]"
+                "[concat(variables('functionAppName'), '-th-', parameters('utcValue'))]"
             ]
         }
     ],
