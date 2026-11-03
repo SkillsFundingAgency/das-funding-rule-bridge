@@ -20,6 +20,7 @@ jobs:
   - template: azure-pipelines-templates/build/step/app-build.yml@das-platform-building-blocks
     parameters:
       ContinueOnVulnerablePackageScanError: true
+      SonarCloudProjectKey: SkillsFundingAgency_das-funding-rule-bridge
       AzureArtifactsFeed: ${{ parameters.AzureArtifactsFeed }}
 
   - task: DotNetCoreCLI@2
